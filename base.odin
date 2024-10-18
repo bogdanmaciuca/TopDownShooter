@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import "core:unicode/utf8"
 import sdl "vendor:sdl2"
 import sdl_ttf "vendor:sdl2/ttf"
@@ -131,10 +132,12 @@ App_Draw_Text :: proc(app: ^App, str: string, x: i32, y: i32) {
             current_x = x
             current_y += app.text_renderer.max_height + LINE_SPACING
         }
-        w, h := app.text_renderer.chars[ch].width, app.text_renderer.chars['A'].height
-        rect : sdl.Rect = { current_x, current_y, w, h }
-        sdl.RenderCopy(app.renderer, app.text_renderer.chars[ch].texture, nil, &rect)
-        current_x += w + CHAR_SPACING
+        else {
+            w, h := app.text_renderer.chars[ch].width, app.text_renderer.chars['A'].height
+            rect : sdl.Rect = { current_x, current_y, w, h }
+            sdl.RenderCopy(app.renderer, app.text_renderer.chars[ch].texture, nil, &rect)
+            current_x += w + CHAR_SPACING
+        }
     }
 }
 
@@ -151,7 +154,7 @@ App_Get_Cursor_Pos :: proc(x: ^i32, y: ^i32) {
     sdl.GetMouseState(x, y)
 }
 
-App_Get_Ticks :: proc() -> u32 {
+App_Get_Milli :: proc() -> u32 {
     return sdl.GetTicks()
 }
 
