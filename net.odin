@@ -16,6 +16,8 @@ Packet types:
 
 [accept]:
 - id -> 4 bytes
+* id starts from 0; negative numbers are errors:
+  - -1 -> No more room
 
 [data]:
 - id      -> 4 bytes
