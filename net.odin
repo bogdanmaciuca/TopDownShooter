@@ -14,9 +14,13 @@ Packet types:
 [connect]:
 - name -> 28 bytes
 
+[disconnect]:
+- id -> 4 bytes
+
 [accept]:
 - id -> 4 bytes
-* id starts from 0; negative numbers are errors:
+* id starts from 0 and is used to index into the client array on the server;
+negative numbers are errors:
   - -1 -> No more room
 
 [data]:
@@ -62,7 +66,7 @@ Net_Packet_Content_Accept :: struct {
     id: i32
 }
 Net_Packet_Content_Disconnect :: struct {
-    data: [28]u8
+    id: i32
 }
 Net_Packet_Content_Data :: struct {
     id: i32,
@@ -123,9 +127,14 @@ Net_Address_From_String :: proc(str: cstring, port: u16) -> Net_Address {
 }
 
 // Initializes the packet with type DATA
-Net_Packet_From_Player :: proc(packet: ^Net_UDP_Packet, player: ^Player) {
-    packet.len = NET_PACKET_SIZE
-    packet.data = cast([^]u8)player
+Net_Packet_Content_From_Player :: proc(packet_content: ^Net_Packet_Content, player: ^Player) {
+    packet_content.data.id = player.id
+    packet_content.data.x = player.x
+    packet_content.data.y = player.y
+    packet_content.data.angle = player.angle
+    packet_content.data.vel_x = player.vel_x
+    packet_content.data.vel_y = player.vel_y
+    packet_content.data.ang_vel = player.ang_vel
 }
 
 Net_Packet_Destroy :: proc(packet: ^Net_UDP_Packet) {
@@ -157,9 +166,9 @@ Net_Recv_Blocking :: proc(socket: Net_Socket, packet: ^Net_Packet, address: ^Net
 }
 
 // Returns 0 on error and 1 if the package was sent
-Net_Send :: proc(socket: Net_Socket, address: Net_Address, packet_type: Net_Packet_Type, packet_content: Net_Packet_Content) -> i32 {
-    packet := Net_Packet{type = packet_type, content = packet_content}
-    socket.send_packet.address = address
+Net_Send :: proc(socket: Net_Socket, address: Net_Address, packet_type: Net_Packet_Type, packet_content: ^Net_Packet_Content) -> i32 {
+    packet := Net_Packet{type = packet_type, content = packet_content^} // TODO: Would it be better if instead of dereferencing i would
+    socket.send_packet.address = address                                //       just pass be value the array?
     socket.send_packet.channel = -1
     socket.send_packet.len = NET_PACKET_CAPACITY
     socket.send_packet.data = cast([^]u8)&packet
@@ -176,7 +185,7 @@ Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> 
     // Send request with name
     packet_content : Net_Packet_Content
     mem.copy(&packet_content.connect.name, rawptr(name), 28)
-    send_result := Net_Send(socket, address, Net_Packet_Type.Connect, packet_content)
+    send_result := Net_Send(socket, address, Net_Packet_Type.Connect, &packet_content)
     assert(send_result == 1)
 
     // Wait for response from server

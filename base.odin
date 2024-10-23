@@ -154,7 +154,7 @@ App_Get_Cursor_Pos :: proc(x: ^i32, y: ^i32) {
     sdl.GetMouseState(x, y)
 }
 
-App_Get_Milli :: proc() -> u32 {
-    return sdl.GetTicks()
+App_Get_Milli :: proc() -> f32 {
+	return f32(f64(sdl.GetPerformanceCounter()) * 1000 / f64(sdl.GetPerformanceFrequency()))
 }
 

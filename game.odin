@@ -6,14 +6,15 @@ import sdl "vendor:sdl2"
 PLAYER_MAX_VEL :: 1
 
 Player :: struct {
+    image: App_Image,
     id: i32,
+    name: [28]u8,
     x: f32,
     y: f32,
     angle: f32,
     vel_x: f32,
     vel_y: f32,
-    ang_vel: f32,
-    image: App_Image
+    ang_vel: f32
 }
 
 Player_Init :: proc(app: ^App, player: ^Player, sprite: cstring) {

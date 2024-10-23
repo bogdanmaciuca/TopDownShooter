@@ -12,7 +12,7 @@ FONT_COLOR : sdl.Color : { 255, 255, 255, 255 }
 CHAR_SPACING :: 0
 LINE_SPACING :: 2
 
-NET_UPDATE_INTERVAL :: 1000 / 30 // Milliseconds
+NET_UPDATE_INTERVAL :: 20 // Milliseconds
 
 Run_As_Client :: proc() {
     app : App
@@ -36,7 +36,7 @@ Run_As_Client :: proc() {
 
     event : sdl.Event
     delta_time : f32 = 0
-    net_accumulator : f32 = 0
+    net_send_accumulator : f32 = 0
     game_loop : for {
         frame_start := App_Get_Milli()
 
@@ -56,27 +56,34 @@ Run_As_Client :: proc() {
         App_Draw_Text(&app, "Hello world!\nHow you doin'", 100, 200)
         App_Present(&app)
 
-        // Networking
-        net_accumulator += delta_time
-        if net_accumulator > NET_UPDATE_INTERVAL {
-            net_accumulator -= NET_UPDATE_INTERVAL
-
-            // Receiving packets
-            packet_recv : Net_Packet
-            recv_result := Net_Recv(socket, &packet_recv, nil)
-            for recv_result != 0 {
-                assert(recv_result != -1)
-                fmt.println(packet_recv.type)
-                recv_result = Net_Recv(socket, &packet_recv, nil)
+        // Receiving packets
+        recv_packet : Net_Packet
+        recv_result := Net_Recv(socket, &recv_packet, nil)
+        for recv_result != 0 {
+            assert(recv_result != -1)
+            if recv_packet.type == .Data && recv_packet.content.data.id != player.id {
+                fmt.println("Receiving data!!!")
             }
+            recv_result = Net_Recv(socket, &recv_packet, nil)
+        }
 
-            // Send packets
-            // ...
+        // Sending packets
+        net_send_accumulator += delta_time
+        if net_send_accumulator > NET_UPDATE_INTERVAL {
+            net_send_accumulator -= NET_UPDATE_INTERVAL
+
+            packet_content : Net_Packet_Content
+            Net_Packet_Content_From_Player(&packet_content, &player)
+            Net_Send(socket, server_address, .Data, &packet_content)
         }
 
         frame_end := App_Get_Milli()
-        delta_time = cast(f32)(frame_end - frame_start)
+        delta_time = frame_end - frame_start
     }
+
+    packet_content : Net_Packet_Content
+    packet_content.disconnect.id = player.id
+    Net_Send(socket, server_address, .Disconnect, &packet_content)
 }
 
 
