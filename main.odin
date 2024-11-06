@@ -1,15 +1,21 @@
 /*
 TODO:
-- make the server update all players every N milliseconds
+- get a map going
+- get some collisions between players
+- collisions between map and players
+
+- keep track of the time each packet was sent so we know how to
+interpolate with the velocity
 - don t set len to max_capacity in net_send() if that s not necessary
-- Send back a different color to each player that they will have throughtout the match
-- connect multiple players to the server
+- when a new player tries to connect, search for an empty slot in the
+client array and if an index is found send that as the player ID
 */
 
 package main
 
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import "core:strconv"
 import sdl "vendor:sdl2"
 
@@ -32,10 +38,16 @@ main :: proc() {
         fmt.println("Error: too many arguments")
     }
     else if len(os.args) == 2 {
-        fmt.println("Error: too few arguments")
+        if os.args[1] == "-e" {
+            Run_As_Editor()
+        }
+        else {
+            username := strings.unsafe_string_to_cstring(os.args[1])
+            Run_As_Client(username)
+        }
     }
     else {
-        Run_As_Client()
+        fmt.println("Error: too few arguments")
     }
 }
 

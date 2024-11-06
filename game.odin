@@ -3,6 +3,8 @@ package main
 import math "core:math"
 import sdl "vendor:sdl2"
 
+PLAYER_IMG_W :: 150 // These keep
+PLAYER_IMG_H :: 100  // proportions
 PLAYER_MAX_VEL :: 1
 
 Player :: struct {
@@ -18,14 +20,14 @@ Player :: struct {
 }
 
 Player_Init :: proc(app: ^App, player: ^Player, sprite: cstring) {
-    player.image = App_Load_Image(app, sprite, 0, 0)
+    player.image = App_Load_Image(app, sprite, PLAYER_IMG_W, PLAYER_IMG_H)
 }
 
 Player_Destroy :: proc(player: ^Player) {
     App_Free_Image(player.image)
 }
 
-Player_Draw :: proc(app: ^App, player: Player) {
+Player_Draw :: proc(app: ^App, player: ^Player) {
     App_Draw_Image(
         app, player.image,
         cast(i32)player.x - player.image.width / 2,
@@ -57,8 +59,8 @@ Player_Update :: proc(app: ^App, player: ^Player, delta_time: f32) {
     App_Get_Cursor_Pos(&mouse_x, &mouse_y)
 
     player.angle = math.to_degrees(math.atan2(
-        cast(f32)mouse_y - (player.y + cast(f32)app.window_height / 2.0),
-        cast(f32)mouse_x - (player.x + cast(f32)app.window_width / 2.0)
+        cast(f32)mouse_y - cast(f32)app.window_height / 2.0,
+        cast(f32)mouse_x - cast(f32)app.window_width / 2.0
     ))
 }
 

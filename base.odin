@@ -6,6 +6,12 @@ import sdl "vendor:sdl2"
 import sdl_ttf "vendor:sdl2/ttf"
 import sdl_img "vendor:sdl2/image"
 
+FONT_NAME :: "C64_Mono.ttf"
+FONT_SIZE :: 16
+FONT_COLOR : sdl.Color : { 255, 255, 255, 255 }
+CHAR_SPACING :: 0
+LINE_SPACING :: 2
+
 Text_Char :: struct {
     texture: ^sdl.Texture,
     width: i32,
@@ -102,13 +108,14 @@ App_Destroy :: proc(app: ^App) {
 
 App_Present :: proc(app: ^App) {
     sdl.RenderPresent(app.renderer)
-    sdl.SetRenderDrawColor(app.renderer, BKG_COLOR.r, BKG_COLOR.g, BKG_COLOR.b, BKG_COLOR.a)
     sdl.RenderClear(app.renderer)
 }
 
+// width and height can be 0 and they will be set to the source width and height
 App_Load_Image :: proc(app: ^App, filename: cstring, width: i32, height: i32) -> App_Image {
     image : App_Image
     surface := sdl_img.Load(filename)
+    assert(surface != nil, sdl.GetErrorString())
     image.src_width, image.src_height = surface.w, surface.h
     image.texture = sdl.CreateTextureFromSurface(app.renderer, surface)
 
@@ -147,7 +154,8 @@ App_Draw_Image :: proc(app: ^App, image: App_Image, x: i32, y: i32, angle: f32) 
         y - cast(i32)app.camera_y + cast(i32)app.window_height / 2,
         image.width, image.height
     }
-    sdl.RenderCopyEx(app.renderer, image.texture, nil, &rect, cast(f64)angle, nil, sdl.RendererFlip.NONE)
+    result := sdl.RenderCopyEx(app.renderer, image.texture, nil, &rect, cast(f64)angle, nil, sdl.RendererFlip.NONE)
+    assert(result == 0, sdl.GetErrorString())
 }
 
 App_Get_Cursor_Pos :: proc(x: ^i32, y: ^i32) {

@@ -15,10 +15,13 @@ Packet types:
 - name -> 28 bytes
 
 [disconnect]:
-- id -> 4 bytes
+- id -> 2 bytes
 
 [accept]:
-- id -> 4 bytes
+- id         -> 2 bytes
+- lobby_size -> 2 bytes
+-----------------------
+- sum        -> 4 bytes
 * id starts from 0 and is used to index into the client array on the server;
 negative numbers are errors:
   - -1 -> No more room
@@ -46,7 +49,7 @@ import sdl_net "vendor:sdl2/net"
 NET_RECV_RETRY_TIME :: 20 // Milliseconds
 NET_PACKET_CAPACITY :: 32
 NET_PACKET_SIZE :: 28
-NET_CONN_TIMEOUT :: 1000 // Milliseconds
+NET_CONN_TIMEOUT :: 2000 // Milliseconds
 
 Net_UDP_Socket :: sdl_net.UDPsocket
 Net_Address :: sdl_net.IPaddress
@@ -63,7 +66,8 @@ Net_Packet_Content_Connect :: struct {
     name: [28]u8
 }
 Net_Packet_Content_Accept :: struct {
-    id: i32
+    id: i32,
+    lobby_size: i32
 }
 Net_Packet_Content_Disconnect :: struct {
     id: i32
@@ -178,10 +182,11 @@ Net_Send :: proc(socket: Net_Socket, address: Net_Address, packet_type: Net_Pack
 /*
 PROTOCOL:
 - client sends a packet with their name
-- server sends back a packet with the client's ID or -1 if the connection is denied
+- server sends back a packet with the client's ID (or -1 if the connection is denied)
+and the lobby size
 */
 // Returns the ID the client must use when sending packets to the server
-Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> i32 {
+Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> (i32, i32) {
     // Send request with name
     packet_content : Net_Packet_Content
     mem.copy(&packet_content.connect.name, rawptr(name), 28)
@@ -192,6 +197,6 @@ Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> 
     packet : Net_Packet
     recv_result := Net_Recv_Blocking(socket, &packet, nil, NET_CONN_TIMEOUT)
     assert(recv_result == 1)
-    return packet.content.accept.id
+    return packet.content.accept.id, packet.content.accept.lobby_size
 }
 

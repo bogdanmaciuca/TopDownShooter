@@ -5,16 +5,10 @@ import sdl "vendor:sdl2"
 
 WND_W :: 1024
 WND_H :: 768
-BKG_COLOR : sdl.Color : { 150, 100, 150, 255 }
-FONT_NAME :: "C64_Mono.ttf"
-FONT_SIZE :: 16
-FONT_COLOR : sdl.Color : { 255, 255, 255, 255 }
-CHAR_SPACING :: 0
-LINE_SPACING :: 2
 
 NET_UPDATE_INTERVAL :: 20 // Milliseconds
 
-Run_As_Client :: proc() {
+Run_As_Client :: proc(username: cstring) {
     app : App
     App_Init(&app, "Top Down Shooter", WND_W, WND_H)
     defer App_Destroy(&app)
@@ -27,12 +21,17 @@ Run_As_Client :: proc() {
 
     server_address := Net_Address_From_String("127.0.0.1", PORT)
 
-    player : Player
-    Player_Init(&app, &player, "res/blue.png")
-    defer Player_Destroy(&player)
+    player_id, lobby_size := Net_Connect(socket, server_address, username)
+    fmt.println(player_id, lobby_size)
 
-    player.id = Net_Connect(socket, server_address, "Dogshit")
-    fmt.println(player.id)
+    game_map := App_Load_Image(&app, "res/map.jpg", 0, 0)
+    SPRITE_LOOKUP := [4]cstring{ "res/red.png", "res/blue.png", "res/yellow.png", "res/green.png" }
+    players := make([]Player, lobby_size)
+    for i in 0..<lobby_size do Player_Init(&app, &players[i], SPRITE_LOOKUP[i])
+
+    players[player_id].id = player_id // The client
+
+    Player_Init(&app, &players[player_id], SPRITE_LOOKUP[player_id])
 
     event : sdl.Event
     delta_time : f32 = 0
@@ -48,21 +47,15 @@ Run_As_Client :: proc() {
             }
         }
 
-        // Game logic
-        Player_Update(&app, &player, delta_time)
-
-        // Rendering
-        Player_Draw(&app, player)
-        App_Draw_Text(&app, "Hello world!\nHow you doin'", 100, 200)
-        App_Present(&app)
-
         // Receiving packets
         recv_packet : Net_Packet
         recv_result := Net_Recv(socket, &recv_packet, nil)
         for recv_result != 0 {
             assert(recv_result != -1)
-            if recv_packet.type == .Data && recv_packet.content.data.id != player.id {
-                fmt.println("Receiving data!!!")
+            if recv_packet.type == .Data && recv_packet.content.data.id != player_id {
+                players[recv_packet.content.data.id].x = recv_packet.content.data.x
+                players[recv_packet.content.data.id].y = recv_packet.content.data.y
+                players[recv_packet.content.data.id].angle = recv_packet.content.data.angle
             }
             recv_result = Net_Recv(socket, &recv_packet, nil)
         }
@@ -73,17 +66,28 @@ Run_As_Client :: proc() {
             net_send_accumulator -= NET_UPDATE_INTERVAL
 
             packet_content : Net_Packet_Content
-            Net_Packet_Content_From_Player(&packet_content, &player)
+            Net_Packet_Content_From_Player(&packet_content, &players[player_id])
             Net_Send(socket, server_address, .Data, &packet_content)
         }
+
+        // Game logic
+        Player_Update(&app, &players[player_id], delta_time)
+        app.camera_x = players[player_id].x
+        app.camera_y = players[player_id].y
+
+        // Rendering
+        App_Draw_Image(&app, game_map, 0, 0, 0)
+        for i in 0..<lobby_size {
+            Player_Draw(&app, &players[i])
+        }
+        App_Present(&app)
 
         frame_end := App_Get_Milli()
         delta_time = frame_end - frame_start
     }
 
     packet_content : Net_Packet_Content
-    packet_content.disconnect.id = player.id
+    packet_content.disconnect.id = player_id
     Net_Send(socket, server_address, .Disconnect, &packet_content)
 }
-
 

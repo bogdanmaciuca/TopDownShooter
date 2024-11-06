@@ -6,8 +6,23 @@ import sdl "vendor:sdl2"
 
 PORT :: 4000
 NET_MAX_CLIENTS :: 4
-SEND_INTERVAL :: 20 // Milliseconds
-DELAY_PER_FRAME :: 1 // Milliseconds
+SEND_INTERVAL :: 20  // Milliseconds
+DELAY_PER_FRAME :: 1 // <||
+TIMEOUT :: 2000      // <||
+
+// Returns the position of the first empty slot or -1 if there isn't one
+Find_Empty_Slot :: proc(slot_array: []bool) -> i32 {
+    for i in 0..<len(slot_array) {
+        if slot_array[i] == false do return cast(i32)i
+    }
+    return -1
+}
+All_Slots_Empty :: proc(slot_array: []bool) -> bool {
+    for i in 0..<len(slot_array) {
+        if slot_array[i] == true do return false
+    }
+    return true
+}
 
 Run_As_Server :: proc(max_client_num: i32) {
     Net_Init()
@@ -16,10 +31,13 @@ Run_As_Server :: proc(max_client_num: i32) {
     socket := Net_Socket_Create(PORT)
     defer Net_Socket_Destroy(socket)
 
-    clients : [NET_MAX_CLIENTS]Player
-    client_addresses : [NET_MAX_CLIENTS]Net_Address
-    connected_clients_num : i32 = 0
-    packet_content_arr : [NET_MAX_CLIENTS]Net_Packet_Content
+    clients := make([]Player, max_client_num)
+    client_slots := make([]bool, max_client_num) // 0 for empty, 1 for occupied
+    client_addresses := make([]Net_Address, max_client_num)
+    packet_content_arr := make([]Net_Packet_Content, max_client_num)
+    client_last_recv_time := make([]f32, max_client_num)
+
+    game_started := false
 
     last_send_time : f32 = App_Get_Milli()
 
@@ -44,45 +62,89 @@ Run_As_Server :: proc(max_client_num: i32) {
 
             #partial switch recv_packet.type {
             case .Connect:
-                if connected_clients_num >= NET_MAX_CLIENTS {
+                // If lobby is full, then do not accept any more clients
+                slot := Find_Empty_Slot(client_slots)
+                if slot == -1 {
                     packet_content.accept.id = -1
                     Net_Send(socket, recv_address, .Accept, &packet_content)
                 }
-                else {
-                    packet_content.accept.id = connected_clients_num
-                    mem.copy(&clients[connected_clients_num].name[0], &recv_packet.content.connect.name[0], 28)
-                    client_addresses[connected_clients_num] = recv_address
-                    fmt.println("{} connected.", cstring(&clients[connected_clients_num].name[0]))
-                    connected_clients_num += 1
+                else { // If the lobby is not full send .Accept message
+                    client_slots[slot] = true
+                    // Set ID, name and address of player
+                    clients[slot].id = slot
+                    mem.copy(&clients[slot].name[0], &recv_packet.content.connect.name[0], 28)
+                    client_addresses[slot] = recv_address
+                    // Construct the accept packet
+                    packet_content.accept.id = slot
+                    packet_content.accept.lobby_size = max_client_num
+                    // Log
+                    fmt.printfln("{} connected.", cstring(&clients[slot].name[0]))
+                    // Send the packet
                     Net_Send(socket, recv_address, .Accept, &packet_content)
                 }
             case .Disconnect:
-                fmt.printfln("{} disconnected.", cstring(&clients[recv_packet.content.disconnect.id].name[0]))
+                id := recv_packet.content.disconnect.id
+                fmt.printfln("{} disconnected.", cstring(&clients[id].name[0]))
+                client_slots[id] = false
             case .Data:
-                clients[packet_content.data.id].x = packet_content.data.x
-                clients[packet_content.data.id].y = packet_content.data.y
-                clients[packet_content.data.id].angle = packet_content.data.angle
-                clients[packet_content.data.id].vel_x = packet_content.data.vel_x
-                clients[packet_content.data.id].vel_y = packet_content.data.vel_y
-                clients[packet_content.data.id].ang_vel = packet_content.data.ang_vel
+                id := recv_packet.content.data.id
+                // Update the time the last packet was received
+                client_last_recv_time[id] = App_Get_Milli()
+
+                // Set client data
+                clients[id].x = recv_packet.content.data.x
+                clients[id].y = recv_packet.content.data.y
+                clients[id].angle = recv_packet.content.data.angle
+                clients[id].vel_x = recv_packet.content.data.vel_x
+                clients[id].vel_y = recv_packet.content.data.vel_y
+                clients[id].ang_vel = recv_packet.content.data.ang_vel
             }
             recv_result = Net_Recv(socket, &recv_packet, &recv_address)
         }
 
-        // Checking if the lobby if filled up
-        if connected_clients_num == max_client_num {
+        // Checking if all the players have disconnected to close the server
+        if game_started && All_Slots_Empty(client_slots) {
+            fmt.println("All clients have disconnected. Exitting.")
+            break main_loop
+        }
 
+        // Checking if the lobby is full so the game can start
+        if !game_started && Find_Empty_Slot(client_slots) == -1 {
+            for i in 0..<max_client_num do client_last_recv_time[i] = App_Get_Milli()
+
+            game_started = true
+            fmt.println("Lobby is full, game started.")
+        }
+
+        // Checking if any client has not sent a packet in TIMEOUT ms after the game has started
+        if game_started {
+            for i in 0..<max_client_num {
+                if client_slots[i] == true && App_Get_Milli() - client_last_recv_time[i] > TIMEOUT {
+                    fmt.printfln("{} disconnected.", clients[i].name)
+                    client_slots[i] = false
+                }
+            }
+        }
+
+        // Checking if the lobby if filled up
+        if game_started {
             // Sending packets
             current_time := App_Get_Milli()
             if current_time > last_send_time + SEND_INTERVAL {
                 last_send_time = current_time
                 for i in 0..<max_client_num {
-                    Net_Packet_Content_From_Player(&packet_content_arr[i], &clients[i])
+                    //if client_slots[i] {
+                        Net_Packet_Content_From_Player(&packet_content_arr[i], &clients[i])
+                    //}
                 }
                 for i in 0..<max_client_num {
-                    for j in 0..<max_client_num {
-                        Net_Send(socket, client_addresses[i], .Data, &packet_content_arr[j])
-                    }
+                    //if client_slots[i] {
+                        for j in 0..<max_client_num {
+                            //if client_slots[j] {
+                                Net_Send(socket, client_addresses[i], .Data, &packet_content_arr[j])
+                            //}
+                        }
+                    //}
                 }
             }
         }
