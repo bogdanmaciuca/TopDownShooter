@@ -25,9 +25,14 @@ Run_As_Client :: proc(username: cstring) {
     fmt.println(player_id, lobby_size)
 
     game_map := App_Load_Image(&app, "res/map.jpg", 0, 0)
+    fmt.println(game_map.width, game_map.height)
     SPRITE_LOOKUP := [4]cstring{ "res/red.png", "res/blue.png", "res/yellow.png", "res/green.png" }
     players := make([]Player, lobby_size)
     for i in 0..<lobby_size do Player_Init(&app, &players[i], SPRITE_LOOKUP[i])
+
+    map_mesh : Map_Mesh
+    Map_Load(&map_mesh, "res/map_mesh.json")
+    defer delete(map_mesh)
 
     players[player_id].id = player_id // The client
 
@@ -42,8 +47,8 @@ Run_As_Client :: proc(username: cstring) {
         // Event handling
         if sdl.PollEvent(&event) {
             #partial switch event.type {
-                case sdl.EventType.QUIT:
-                    break game_loop
+            case sdl.EventType.QUIT:
+                break game_loop
             }
         }
 
@@ -71,15 +76,22 @@ Run_As_Client :: proc(username: cstring) {
         }
 
         // Game logic
-        Player_Update(&app, &players[player_id], delta_time)
+        Player_Update(&app, &players[player_id], map_mesh, delta_time)
         app.camera_x = players[player_id].x
         app.camera_y = players[player_id].y
 
         // Rendering
         App_Draw_Image(&app, game_map, 0, 0, 0)
+        App_Set_Color(&app, {25, 150, 25})
+        for i in 0..<len(map_mesh) {
+            App_Draw_Rect(&app, map_mesh[i])
+        }
+        App_Set_Color(&app, {25, 25, 150})
         for i in 0..<lobby_size {
             Player_Draw(&app, &players[i])
+            App_Draw_Rect(&app, players[i].aabb)
         }
+        App_Set_Color(&app, {0, 0, 0})
         App_Present(&app)
 
         frame_end := App_Get_Milli()

@@ -35,8 +35,8 @@ App_Image :: struct {
 
 App :: struct {
     name: cstring,
-    window_width: u16,
-    window_height: u16,
+    window_width: i32,
+    window_height: i32,
     window: ^sdl.Window,
     renderer: ^sdl.Renderer,
     text_renderer: Text_Renderer,
@@ -58,7 +58,7 @@ Text_Renderer_Make_Char :: proc(app: ^App, ch: rune) -> Text_Char {
     return text_char
 }
 
-App_Init :: proc(app: ^App, name: cstring, width: u16, height: u16) {
+App_Init :: proc(app: ^App, name: cstring, width: i32, height: i32) {
     app.name = name
     app.window_width = width
     app.window_height = height
@@ -150,8 +150,8 @@ App_Draw_Text :: proc(app: ^App, str: string, x: i32, y: i32) {
 
 App_Draw_Image :: proc(app: ^App, image: App_Image, x: i32, y: i32, angle: f32) {
     rect : sdl.Rect = {
-        x - cast(i32)app.camera_x + cast(i32)app.window_width / 2,
-        y - cast(i32)app.camera_y + cast(i32)app.window_height / 2,
+        x - cast(i32)app.camera_x + cast(i32)app.window_width / 2 - image.width / 2,
+        y - cast(i32)app.camera_y + cast(i32)app.window_height / 2 - image.height / 2,
         image.width, image.height
     }
     result := sdl.RenderCopyEx(app.renderer, image.texture, nil, &rect, cast(f64)angle, nil, sdl.RendererFlip.NONE)
@@ -166,3 +166,14 @@ App_Get_Milli :: proc() -> f32 {
 	return f32(f64(sdl.GetPerformanceCounter()) * 1000 / f64(sdl.GetPerformanceFrequency()))
 }
 
+App_Set_Color :: proc(app: ^App, color: [3]u8) {
+    sdl.SetRenderDrawColor(app.renderer, color[0], color[1], color[2], 255);
+}
+App_Draw_Rect :: proc(app: ^App, rect: sdl.Rect) {
+    world_rect := sdl.Rect{
+        x = rect.x - cast(i32)app.camera_x + cast(i32)app.window_width / 2,
+        y = rect.y - cast(i32)app.camera_y + cast(i32)app.window_height / 2,
+        w = rect.w, h = rect.h
+    }
+    sdl.RenderDrawRect(app.renderer, &world_rect);
+}

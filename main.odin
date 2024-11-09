@@ -1,8 +1,6 @@
 /*
 TODO:
-- get a map going
-- get some collisions between players
-- collisions between map and players
+- get some collisions between players (each be treated as circle)
 
 - keep track of the time each packet was sent so we know how to
 interpolate with the velocity
@@ -38,13 +36,8 @@ main :: proc() {
         fmt.println("Error: too many arguments")
     }
     else if len(os.args) == 2 {
-        if os.args[1] == "-e" {
-            Run_As_Editor()
-        }
-        else {
-            username := strings.unsafe_string_to_cstring(os.args[1])
-            Run_As_Client(username)
-        }
+        username := strings.unsafe_string_to_cstring(os.args[1])
+        Run_As_Client(username)
     }
     else {
         fmt.println("Error: too few arguments")
