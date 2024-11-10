@@ -50,6 +50,7 @@ NET_RECV_RETRY_TIME :: 20 // Milliseconds
 NET_PACKET_CAPACITY :: 32
 NET_PACKET_SIZE :: 28
 NET_CONN_TIMEOUT :: 2000 // Milliseconds
+SEND_INTERVAL :: 20      // Milliseconds
 
 Net_UDP_Socket :: sdl_net.UDPsocket
 Net_Address :: sdl_net.IPaddress

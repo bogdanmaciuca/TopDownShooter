@@ -6,7 +6,6 @@ import sdl "vendor:sdl2"
 
 PORT :: 4000
 NET_MAX_CLIENTS :: 4
-SEND_INTERVAL :: 20  // Milliseconds
 DELAY_PER_FRAME :: 1 // <||
 TIMEOUT :: 2000      // <||
 

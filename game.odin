@@ -9,6 +9,7 @@ import sdl "vendor:sdl2"
 PLAYER_IMG_W :: 100 // These keep
 PLAYER_IMG_H :: 60  // proportions
 PLAYER_MAX_VEL :: 0.5
+PLAYER_AABB_SHRINKING_FACTOR :: 0.2
 
 Player :: struct {
     image: App_Image,
@@ -33,26 +34,39 @@ Player_Destroy :: proc(player: ^Player) {
     App_Free_Image(player.image)
 }
 
-Player_Draw :: proc(app: ^App, player: ^Player) {
-    App_Draw_Image(app, player.image, cast(i32)player.x, cast(i32)player.y, player.angle)
+// If predict is true then the procedure will take into account the velocity
+// and add it to the player's position
+Player_Draw :: proc(app: ^App, player: ^Player, predict: bool) {
+    predict_x, predict_y, predict_angle : f32
+    if false && predict {
+        predict_x = player.vel_x * SEND_INTERVAL // * 2 // Multiplied by 2 because it's the
+        predict_y = player.vel_y * SEND_INTERVAL //* 2 // same interval on the client and server
+        predict_angle = player.ang_vel * SEND_INTERVAL //* 2
+        fmt.println(player.vel_x)
+    }
+    App_Draw_Image(
+        app, player.image,
+        cast(i32)(player.x + predict_x), cast(i32)(player.y + predict_y),
+        player.angle + predict_angle
+    )
 }
 
 // angle must be in radians!!!
 Rotate_Point :: proc(point_x: ^f32, point_y: ^f32, center_x: f32, center_y: f32, angle: f32) {
-    s := math.sin(angle);
-    c := math.cos(angle);
+    s := math.sin(angle)
+    c := math.cos(angle)
 
     // Translate point to origin
-    point_x^ -= center_x;
-    point_y^ -= center_y;
+    point_x^ -= center_x
+    point_y^ -= center_y
 
     // Rotate point
-    x_new := point_x^ * c - point_y^ * s;
-    y_new := point_x^ * s + point_y^ * c;
+    x_new := point_x^ * c - point_y^ * s
+    y_new := point_x^ * s + point_y^ * c
 
     // Translate point back
-    point_x^ = x_new + center_x;
-    point_y^ = y_new + center_y;
+    point_x^ = x_new + center_x
+    point_y^ = y_new + center_y
 }
 
 Player_Calculate_AABB :: proc(player: ^Player) {
@@ -73,8 +87,10 @@ Player_Calculate_AABB :: proc(player: ^Player) {
         if rotated_rect[i].y < min_y do min_y = rotated_rect[i].y
         else if rotated_rect[i].y > max_y do max_y = rotated_rect[i].y
     }
-    player.aabb.x, player.aabb.y = cast(i32)min_x, cast(i32)min_y
-    player.aabb.w, player.aabb.h = cast(i32)(max_x - min_x), cast(i32)(max_y - min_y)
+    player.aabb.x = cast(i32)(min_x + PLAYER_AABB_SHRINKING_FACTOR * (max_x - min_x))
+    player.aabb.y = cast(i32)(min_y + PLAYER_AABB_SHRINKING_FACTOR * (max_y - min_y))
+    player.aabb.w = cast(i32)((1 - 2 * PLAYER_AABB_SHRINKING_FACTOR) * (max_x - min_x))
+    player.aabb.h = cast(i32)((1 - 2 * PLAYER_AABB_SHRINKING_FACTOR) * (max_y - min_y))
 }
 
 // Returns (correction_x, correction_y)
@@ -154,10 +170,12 @@ Player_Update :: proc(app: ^App, players: ^[]Player, client_id: i32, map_mesh: M
     mouse_x, mouse_y : i32
     App_Get_Cursor_Pos(&mouse_x, &mouse_y)
 
+    last_angle := players[client_id].angle
     players[client_id].angle = math.to_degrees(math.atan2(
         cast(f32)mouse_y - cast(f32)app.window_height / 2.0,
         cast(f32)mouse_x - cast(f32)app.window_width / 2.0
     ))
+    players[client_id].ang_vel = (players[client_id].angle - last_angle) / SEND_INTERVAL
 }
 
 Map_Load :: proc(map_mesh: ^Map_Mesh, filepath: string) {

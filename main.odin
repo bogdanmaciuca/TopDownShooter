@@ -1,9 +1,14 @@
 /*
 TODO:
+- add shooting (raycasting): use AABB to check intersection
+- camera that is between cursor and player
+- cursor as sprite
+- fire sprite at the tip of the gun (hard code the position)
+- screen shake when shooting
+- field of view (simple geometry/sprite?)
 
-- interpolate with velocity by choosing delta_time as the interval
-between receiving packets from the server (SEND_INTERVAL); only use
-this approximation for rendering, not collision detection
+- find a way to make the interpolation smoother; until then, use
+SEND_INTERVAL as an approximation
 - don t set len to max_capacity in net_send() if that s not necessary
 - when a new player tries to connect, search for an empty slot in the
 client array and if an index is found send that as the player ID

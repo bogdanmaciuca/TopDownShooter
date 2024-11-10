@@ -6,8 +6,6 @@ import sdl "vendor:sdl2"
 WND_W :: 1024
 WND_H :: 768
 
-NET_UPDATE_INTERVAL :: 20 // Milliseconds
-
 Run_As_Client :: proc(username: cstring) {
     app : App
     App_Init(&app, "Top Down Shooter", WND_W, WND_H)
@@ -22,10 +20,8 @@ Run_As_Client :: proc(username: cstring) {
     server_address := Net_Address_From_String("127.0.0.1", PORT)
 
     player_id, lobby_size := Net_Connect(socket, server_address, username)
-    fmt.println(player_id, lobby_size)
 
     game_map := App_Load_Image(&app, "res/map.jpg", 0, 0)
-    fmt.println(game_map.width, game_map.height)
     SPRITE_LOOKUP := [4]cstring{ "res/red.png", "res/blue.png", "res/yellow.png", "res/green.png" }
     players := make([]Player, lobby_size)
     for i in 0..<lobby_size do Player_Init(&app, &players[i], SPRITE_LOOKUP[i])
@@ -59,16 +55,19 @@ Run_As_Client :: proc(username: cstring) {
             assert(recv_result != -1)
             if recv_packet.type == .Data && recv_packet.content.data.id != player_id {
                 players[recv_packet.content.data.id].x = recv_packet.content.data.x
+                players[recv_packet.content.data.id].vel_x = recv_packet.content.data.vel_x
                 players[recv_packet.content.data.id].y = recv_packet.content.data.y
+                players[recv_packet.content.data.id].vel_y = recv_packet.content.data.vel_y
                 players[recv_packet.content.data.id].angle = recv_packet.content.data.angle
+                players[recv_packet.content.data.id].ang_vel = recv_packet.content.data.ang_vel
             }
             recv_result = Net_Recv(socket, &recv_packet, nil)
         }
 
         // Sending packets
         net_send_accumulator += delta_time
-        if net_send_accumulator > NET_UPDATE_INTERVAL {
-            net_send_accumulator -= NET_UPDATE_INTERVAL
+        if net_send_accumulator > SEND_INTERVAL {
+            net_send_accumulator -= SEND_INTERVAL
 
             packet_content : Net_Packet_Content
             Net_Packet_Content_From_Player(&packet_content, &players[player_id])
@@ -83,13 +82,13 @@ Run_As_Client :: proc(username: cstring) {
         // Rendering
         App_Draw_Image(&app, game_map, 0, 0, 0)
         App_Set_Color(&app, {25, 150, 25})
-        for i in 0..<len(map_mesh) {
-            App_Draw_Rect(&app, map_mesh[i])
-        }
+        //for i in 0..<len(map_mesh) {
+        //    App_Draw_Rect(&app, map_mesh[i])
+        //}
         App_Set_Color(&app, {25, 25, 150})
         for i in 0..<lobby_size {
-            Player_Draw(&app, &players[i])
-            App_Draw_Rect(&app, players[i].aabb)
+            Player_Draw(&app, &players[i], cast(i32)i != player_id)
+        //    App_Draw_Rect(&app, players[i].aabb)
         }
         App_Set_Color(&app, {0, 0, 0})
         App_Present(&app)
