@@ -1,9 +1,9 @@
 /*
 TODO:
-- get some collisions between players (each be treated as circle)
 
-- keep track of the time each packet was sent so we know how to
-interpolate with the velocity
+- interpolate with velocity by choosing delta_time as the interval
+between receiving packets from the server (SEND_INTERVAL); only use
+this approximation for rendering, not collision detection
 - don t set len to max_capacity in net_send() if that s not necessary
 - when a new player tries to connect, search for an empty slot in the
 client array and if an index is found send that as the player ID

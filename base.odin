@@ -6,7 +6,7 @@ import sdl "vendor:sdl2"
 import sdl_ttf "vendor:sdl2/ttf"
 import sdl_img "vendor:sdl2/image"
 
-FONT_NAME :: "C64_Mono.ttf"
+FONT_NAME :: "res/C64_Mono.ttf"
 FONT_SIZE :: 16
 FONT_COLOR : sdl.Color : { 255, 255, 255, 255 }
 CHAR_SPACING :: 0

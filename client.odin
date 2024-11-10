@@ -76,7 +76,7 @@ Run_As_Client :: proc(username: cstring) {
         }
 
         // Game logic
-        Player_Update(&app, &players[player_id], map_mesh, delta_time)
+        Player_Update(&app, &players, player_id, map_mesh, delta_time)
         app.camera_x = players[player_id].x
         app.camera_y = players[player_id].y
 

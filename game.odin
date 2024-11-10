@@ -112,40 +112,49 @@ Resolve_AABB_Collision :: proc(player: ^Player, rect: sdl.Rect) -> (f32, f32) {
     }
 }
 
-Player_Resolve_Collisions :: proc(player: ^Player, map_mesh: Map_Mesh) {
-    Player_Calculate_AABB(player)
+Player_Resolve_Collisions :: proc(players: ^[]Player, client_id: i32, map_mesh: Map_Mesh) {
+    for i in 0..<len(players^) do Player_Calculate_AABB(&players^[i])
+    // Check for overlapping with the map
     for i in 0..<len(map_mesh) {
-        correction_x, correction_y := Resolve_AABB_Collision(player, map_mesh[i])
-        player.x += correction_x
-        player.y += correction_y
+        correction_x, correction_y := Resolve_AABB_Collision(&players^[client_id], map_mesh[i])
+        players^[client_id].x += correction_x
+        players^[client_id].y += correction_y
+    }
+    // Check for overlapping with other players
+    for i in 0..<len(players^) {
+        if cast(i32)i != client_id {
+            correction_x, correction_y := Resolve_AABB_Collision(&players^[client_id], players^[i].aabb)
+            players^[client_id].x += correction_x
+            players^[client_id].y += correction_y
+        }
     }
 }
 
-Player_Update :: proc(app: ^App, player: ^Player, map_mesh: Map_Mesh, delta_time: f32) {
+Player_Update :: proc(app: ^App, players: ^[]Player, client_id: i32, map_mesh: Map_Mesh, delta_time: f32) {
     keyboard := sdl.GetKeyboardState(nil)
 
-    player.vel_x, player.vel_y = 0, 0
-    if keyboard[sdl.SCANCODE_W] == 1 do player.vel_y = -PLAYER_MAX_VEL
-    else if keyboard[sdl.SCANCODE_S] == 1 do player.vel_y = PLAYER_MAX_VEL
-    if keyboard[sdl.SCANCODE_A] == 1 do player.vel_x = -PLAYER_MAX_VEL
-    else if keyboard[sdl.SCANCODE_D] == 1 do player.vel_x = PLAYER_MAX_VEL
+    players[client_id].vel_x, players[client_id].vel_y = 0, 0
+    if keyboard[sdl.SCANCODE_W] == 1 do players[client_id].vel_y = -PLAYER_MAX_VEL
+    else if keyboard[sdl.SCANCODE_S] == 1 do players[client_id].vel_y = PLAYER_MAX_VEL
+    if keyboard[sdl.SCANCODE_A] == 1 do players[client_id].vel_x = -PLAYER_MAX_VEL
+    else if keyboard[sdl.SCANCODE_D] == 1 do players[client_id].vel_x = PLAYER_MAX_VEL
 
-    magnitude_2 := player.vel_x * player.vel_x + player.vel_y * player.vel_y
+    magnitude_2 := players[client_id].vel_x * players[client_id].vel_x + players[client_id].vel_y * players[client_id].vel_y
     if magnitude_2 > PLAYER_MAX_VEL * PLAYER_MAX_VEL {
         magnitude := math.sqrt(magnitude_2)
-        player.vel_x = player.vel_x / magnitude * PLAYER_MAX_VEL
-        player.vel_y = player.vel_y / magnitude * PLAYER_MAX_VEL
+        players[client_id].vel_x = players[client_id].vel_x / magnitude * PLAYER_MAX_VEL
+        players[client_id].vel_y = players[client_id].vel_y / magnitude * PLAYER_MAX_VEL
     }
 
-    player.x += player.vel_x * delta_time
-    player.y += player.vel_y * delta_time
+    players[client_id].x += players[client_id].vel_x * delta_time
+    players[client_id].y += players[client_id].vel_y * delta_time
 
-    Player_Resolve_Collisions(player, map_mesh)
+    Player_Resolve_Collisions(players, client_id, map_mesh)
 
     mouse_x, mouse_y : i32
     App_Get_Cursor_Pos(&mouse_x, &mouse_y)
 
-    player.angle = math.to_degrees(math.atan2(
+    players[client_id].angle = math.to_degrees(math.atan2(
         cast(f32)mouse_y - cast(f32)app.window_height / 2.0,
         cast(f32)mouse_x - cast(f32)app.window_width / 2.0
     ))
