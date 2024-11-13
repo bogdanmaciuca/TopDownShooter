@@ -23,7 +23,65 @@ All_Slots_Empty :: proc(slot_array: []bool) -> bool {
     return true
 }
 
+// https://stackoverflow.com/questions/3746274/line-intersection-with-aabb-rectangle
+Check_Ray_Segment :: proc(a1: [2]f32, a2: [2]f32, b1:[2]f32, b2: [2]f32) -> bool {
+    b := a2 - a1
+    d := b2 - b1
+    b_dot_d_perp := b.x * d.y - b.y * d.x
+
+    // if b dot d == 0, it means the lines are parallel so have infinite intersection points
+    if b_dot_d_perp == 0 do return false
+
+    c := b1 - a1;
+    t := (c.x * d.x - c.x * d.x) / b_dot_d_perp
+    if t < 0 || t > 1 do return false
+
+    u := (c.x * b.y - c.y * b.x) / b_dot_d_perp
+    if u < 0 || u > 1 do return false
+
+    return true
+}
+
+//Check_Ray_Segment :: proc(a1: [2]f32, a2: [2]f32, b1: [2]f32, b2: [2]f32) -> bool {
+//    // Calculate the ray and AABB boundary vectors
+//    b := a2 - a1
+//    d := b2 - b1
+//    b_dot_d_perp := b.x * d.y - b.y * d.x
+//
+//    // If b dot d == 0, the ray and boundary are parallel (no intersection)
+//    if b_dot_d_perp == 0 do return false
+//
+//    // Calculate vector from the ray start to the AABB boundary
+//    c := b1 - a1
+//
+//    // Calculate t to determine where the intersection happens along the ray
+//    t := (c.x * d.y - c.y * d.x) / b_dot_d_perp
+//    if t < 0 do return false  // Only consider intersections in the ray's direction
+//
+//    // Calculate u to determine where the intersection happens on the AABB boundary
+//    u := (c.x * b.y - c.y * b.x) / b_dot_d_perp
+//    if u < 0 || u > 1 do return false  // u should be within [0, 1] for valid intersection on the AABB boundary
+//
+//    // Intersection occurs
+//    return true
+//}
+
+Check_Ray_AABB :: proc(p0: [2]f32, p1: [2]f32, aabb: sdl.Rect) -> bool {
+    // Top
+    if Check_Ray_Segment(p0, p1, { cast(f32)aabb.x, cast(f32)aabb.y }, { cast(f32)aabb.x + cast(f32)aabb.w, cast(f32)aabb.y }) do return true
+    // Bottom
+    if Check_Ray_Segment(p0, p1, { cast(f32)aabb.x, cast(f32)aabb.y + cast(f32)aabb.h }, { cast(f32)aabb.x + cast(f32)aabb.w, cast(f32)aabb.y + cast(f32)aabb.h }) do return true
+    // Left
+    if Check_Ray_Segment(p0, p1, { cast(f32)aabb.x, cast(f32)aabb.y }, { cast(f32)aabb.x, cast(f32)aabb.y + cast(f32)aabb.h }) do return true
+    // Right
+    if Check_Ray_Segment(p0, p1, { cast(f32)aabb.x + cast(f32)aabb.w, cast(f32)aabb.y }, { cast(f32)aabb.x + cast(f32)aabb.w, cast(f32)aabb.y + cast(f32)aabb.h }) do return true
+    // No intersection
+    return false
+}
+
 Run_As_Server :: proc(max_client_num: i32) {
+    //assert(Check_Ray_AABB({75, 25}, {-25, 25}, {0, 0, 50, 50}))
+
     Net_Init()
     defer Net_Destroy()
 
@@ -73,6 +131,9 @@ Run_As_Server :: proc(max_client_num: i32) {
                     clients[slot].id = slot
                     mem.copy(&clients[slot].name[0], &recv_packet.content.connect.name[0], 28)
                     client_addresses[slot] = recv_address
+                    // Setting width and height
+                    clients[slot].image.width = PLAYER_IMG_W
+                    clients[slot].image.height = PLAYER_IMG_H
                     // Construct the accept packet
                     packet_content.accept.id = slot
                     packet_content.accept.lobby_size = max_client_num
@@ -97,6 +158,21 @@ Run_As_Server :: proc(max_client_num: i32) {
                 clients[id].vel_x = recv_packet.content.data.vel_x
                 clients[id].vel_y = recv_packet.content.data.vel_y
                 clients[id].ang_vel = recv_packet.content.data.ang_vel
+
+                // Calculate AABB
+                Player_Calculate_AABB(&clients[id])
+            case .Bullet:
+                id := recv_packet.content.bullet.id
+                ray_start : [2]f32 = { clients[id].x, clients[id].y }
+                ray_end : [2]f32 = {
+                    cast(f32)recv_packet.content.bullet.target.x,
+                    cast(f32)recv_packet.content.bullet.target.y
+                }
+                for i in 0..<len(clients) {
+                    if cast(i32)i != id && Check_Ray_AABB(ray_start, ray_end, clients[i].aabb) {
+                        fmt.printfln("{} was hit!", cast(cstring)(&clients[i].name[0]))
+                    }
+                }
             }
             recv_result = Net_Recv(socket, &recv_packet, &recv_address)
         }

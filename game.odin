@@ -7,9 +7,9 @@ import "core:encoding/json"
 import sdl "vendor:sdl2"
 
 PLAYER_IMG_W :: 100 // These keep
-PLAYER_IMG_H :: 60  // proportions
+PLAYER_IMG_H :: 50  // proportions
 PLAYER_MAX_VEL :: 0.5
-PLAYER_AABB_SHRINKING_FACTOR :: 0.2
+PLAYER_AABB_SHRINKING_FACTOR :: 0.1
 
 Player :: struct {
     image: App_Image,
@@ -39,9 +39,9 @@ Player_Destroy :: proc(player: ^Player) {
 Player_Draw :: proc(app: ^App, player: ^Player, predict: bool) {
     predict_x, predict_y, predict_angle : f32
     if false && predict {
-        predict_x = player.vel_x * SEND_INTERVAL // * 2 // Multiplied by 2 because it's the
-        predict_y = player.vel_y * SEND_INTERVAL //* 2 // same interval on the client and server
-        predict_angle = player.ang_vel * SEND_INTERVAL //* 2
+        predict_x = player.vel_x * SEND_INTERVAL
+        predict_y = player.vel_y * SEND_INTERVAL
+        predict_angle = player.ang_vel * SEND_INTERVAL
         fmt.println(player.vel_x)
     }
     App_Draw_Image(
@@ -146,7 +146,7 @@ Player_Resolve_Collisions :: proc(players: ^[]Player, client_id: i32, map_mesh: 
     }
 }
 
-Player_Update :: proc(app: ^App, players: ^[]Player, client_id: i32, map_mesh: Map_Mesh, delta_time: f32) {
+Player_Update_Movement :: proc(app: ^App, players: ^[]Player, client_id: i32, map_mesh: Map_Mesh, delta_time: f32) {
     keyboard := sdl.GetKeyboardState(nil)
 
     players[client_id].vel_x, players[client_id].vel_y = 0, 0

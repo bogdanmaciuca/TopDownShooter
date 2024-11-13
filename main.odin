@@ -1,6 +1,10 @@
 /*
 TODO:
+- add cli argument for server IP
 - add shooting (raycasting): use AABB to check intersection
+  - send message to a player if they have been hit
+- add health bar (also send it every frame to the server)
+- refactor functions to use [2] arrays instead of _x, _y
 - camera that is between cursor and player
 - cursor as sprite
 - fire sprite at the tip of the gun (hard code the position)

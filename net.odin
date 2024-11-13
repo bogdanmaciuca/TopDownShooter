@@ -10,6 +10,7 @@ Packet types:
 - accept     -> 1 (client <-- server)
 - disconnect -> 2 (client --> server)
 - data       -> 3 (client <-> server)
+- bullet     -> 4 (client --> server)
 
 [connect]:
 - name -> 28 bytes
@@ -26,6 +27,8 @@ Packet types:
 negative numbers are errors:
   - -1 -> No more room
 
+TODO: make id 2 bytes and add state that is also 2 bytes (or just add another 4 bytes for state)
+      (based on state, maybe get some animation going)
 [data]:
 - id      -> 4 bytes
 - x       -> 4 bytes
@@ -36,6 +39,12 @@ negative numbers are errors:
 - ang_vel -> 4 bytes
 ---------------------
 - sum     -> 28 bytes
+
+[bullet]:
+- id: player -> 4 bytes / 2 bytes maybe?
+- endpoint   -> 8 bytes (i32, i32) maybe?
+-----------------------
+- sum        -> 12 bytes
 */
 
 package main
@@ -49,18 +58,19 @@ import sdl_net "vendor:sdl2/net"
 NET_RECV_RETRY_TIME :: 20 // Milliseconds
 NET_PACKET_CAPACITY :: 32
 NET_PACKET_SIZE :: 28
-NET_CONN_TIMEOUT :: 2000 // Milliseconds
-SEND_INTERVAL :: 20      // Milliseconds
+NET_CONN_TIMEOUT :: 2000  // Milliseconds
+SEND_INTERVAL :: 20       // Milliseconds
 
 Net_UDP_Socket :: sdl_net.UDPsocket
 Net_Address :: sdl_net.IPaddress
 Net_UDP_Packet :: sdl_net.UDPpacket
 
 Net_Packet_Type :: enum i32 {
-    Connect = 0,
-    Accept = 1,
-    Disconnect = 2,
-    Data = 3
+    Connect,
+    Accept,
+    Disconnect,
+    Data,
+    Bullet
 }
 
 Net_Packet_Content_Connect :: struct {
@@ -82,11 +92,16 @@ Net_Packet_Content_Data :: struct {
     vel_y: f32,
     ang_vel: f32
 }
+Net_Packet_Content_Bullet :: struct {
+    id: i32,
+    target: [2]i32
+}
 Net_Packet_Content :: struct #raw_union {
     connect: Net_Packet_Content_Connect,
     accept: Net_Packet_Content_Accept,
     disconnect: Net_Packet_Content_Disconnect,
-    data: Net_Packet_Content_Data
+    data: Net_Packet_Content_Data,
+    bullet: Net_Packet_Content_Bullet
 }
 Net_Packet :: struct {
     type: Net_Packet_Type,
