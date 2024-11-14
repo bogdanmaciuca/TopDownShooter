@@ -41,8 +41,7 @@ App :: struct {
     renderer: ^sdl.Renderer,
     text_renderer: Text_Renderer,
 
-    camera_x: f32,
-    camera_y: f32
+    camera: [2]f32
 }
 
 Text_Renderer_Make_Char :: proc(app: ^App, ch: rune) -> Text_Char {
@@ -63,8 +62,7 @@ App_Init :: proc(app: ^App, name: cstring, width: i32, height: i32) {
     app.window_width = width
     app.window_height = height
     app.text_renderer.font_size = FONT_SIZE
-    app.camera_x = 0
-    app.camera_y = 0
+    app.camera = { 0, 0 }
 
     // Initialize SDL
     sdl_init_error := sdl.Init(sdl.INIT_VIDEO)
@@ -148,14 +146,27 @@ App_Draw_Text :: proc(app: ^App, str: string, x: i32, y: i32) {
     }
 }
 
-App_Draw_Image :: proc(app: ^App, image: App_Image, x: i32, y: i32, angle: f32) {
+App_Draw_Image_i :: proc(app: ^App, image: App_Image, pos: [2]i32, angle: f32) {
     rect : sdl.Rect = {
-        x - cast(i32)app.camera_x + cast(i32)app.window_width / 2 - image.width / 2,
-        y - cast(i32)app.camera_y + cast(i32)app.window_height / 2 - image.height / 2,
+        pos.x - cast(i32)app.camera.x + cast(i32)app.window_width / 2 - image.width / 2,
+        pos.y - cast(i32)app.camera.y + cast(i32)app.window_height / 2 - image.height / 2,
         image.width, image.height
     }
     result := sdl.RenderCopyEx(app.renderer, image.texture, nil, &rect, cast(f64)angle, nil, sdl.RendererFlip.NONE)
     assert(result == 0, sdl.GetErrorString())
+}
+App_Draw_Image_f :: proc(app: ^App, image: App_Image, pos: [2]f32, angle: f32) {
+    rect : sdl.Rect = {
+        cast(i32)pos.x - cast(i32)app.camera.x + cast(i32)app.window_width / 2 - image.width / 2,
+        cast(i32)pos.y - cast(i32)app.camera.y + cast(i32)app.window_height / 2 - image.height / 2,
+        image.width, image.height
+    }
+    result := sdl.RenderCopyEx(app.renderer, image.texture, nil, &rect, cast(f64)angle, nil, sdl.RendererFlip.NONE)
+    assert(result == 0, sdl.GetErrorString())
+}
+App_Draw_Image :: proc {
+    App_Draw_Image_i,
+    App_Draw_Image_f
 }
 
 App_Get_Cursor_Pos :: proc(x: ^i32, y: ^i32) {
@@ -167,12 +178,12 @@ App_Get_Milli :: proc() -> f32 {
 }
 
 App_Set_Color :: proc(app: ^App, color: [3]u8) {
-    sdl.SetRenderDrawColor(app.renderer, color[0], color[1], color[2], 255);
+    sdl.SetRenderDrawColor(app.renderer, color.r, color.g, color.b, 255);
 }
 App_Draw_Rect :: proc(app: ^App, rect: sdl.Rect) {
     world_rect := sdl.Rect{
-        x = rect.x - cast(i32)app.camera_x + cast(i32)app.window_width / 2,
-        y = rect.y - cast(i32)app.camera_y + cast(i32)app.window_height / 2,
+        x = rect.x - cast(i32)app.camera.x + cast(i32)app.window_width / 2,
+        y = rect.y - cast(i32)app.camera.y + cast(i32)app.window_height / 2,
         w = rect.w, h = rect.h
     }
     sdl.RenderDrawRect(app.renderer, &world_rect);

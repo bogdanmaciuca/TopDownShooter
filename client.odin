@@ -51,8 +51,8 @@ Run_As_Client :: proc(username: cstring) {
                     cursor_x, cursor_y : i32
                     App_Get_Cursor_Pos(&cursor_x, &cursor_y)
                     target : [2]i32 = {
-                        cursor_x + cast(i32)app.camera_x - app.window_width / 2,
-                        cursor_y + cast(i32)app.camera_y - app.window_height / 2
+                        cursor_x + cast(i32)app.camera.x - app.window_width / 2,
+                        cursor_y + cast(i32)app.camera.y - app.window_height / 2
                     }
                     packet_content : Net_Packet_Content
                     packet_content.bullet.id = player_id
@@ -68,10 +68,8 @@ Run_As_Client :: proc(username: cstring) {
         for recv_result != 0 {
             assert(recv_result != -1)
             if recv_packet.type == .Data && recv_packet.content.data.id != player_id {
-                players[recv_packet.content.data.id].x = recv_packet.content.data.x
-                players[recv_packet.content.data.id].vel_x = recv_packet.content.data.vel_x
-                players[recv_packet.content.data.id].y = recv_packet.content.data.y
-                players[recv_packet.content.data.id].vel_y = recv_packet.content.data.vel_y
+                players[recv_packet.content.data.id].pos = recv_packet.content.data.pos
+                players[recv_packet.content.data.id].vel = recv_packet.content.data.vel
                 players[recv_packet.content.data.id].angle = recv_packet.content.data.angle
                 players[recv_packet.content.data.id].ang_vel = recv_packet.content.data.ang_vel
             }
@@ -90,11 +88,10 @@ Run_As_Client :: proc(username: cstring) {
 
         // Game logic
         Player_Update_Movement(&app, &players, player_id, map_mesh, delta_time)
-        app.camera_x = players[player_id].x
-        app.camera_y = players[player_id].y
+        app.camera = players[player_id].pos
 
         // Rendering
-        App_Draw_Image(&app, game_map, 0, 0, 0)
+        App_Draw_Image_i(&app, game_map, {0, 0}, 0)
         App_Set_Color(&app, {25, 150, 25})
         for i in 0..<len(map_mesh) {
             App_Draw_Rect(&app, map_mesh[i])

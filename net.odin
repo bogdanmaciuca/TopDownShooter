@@ -85,11 +85,9 @@ Net_Packet_Content_Disconnect :: struct {
 }
 Net_Packet_Content_Data :: struct {
     id: i32,
-    x: f32,
-    y: f32,
+    pos: [2]f32,
     angle: f32,
-    vel_x: f32,
-    vel_y: f32,
+    vel: [2]f32,
     ang_vel: f32
 }
 Net_Packet_Content_Bullet :: struct {
@@ -149,11 +147,9 @@ Net_Address_From_String :: proc(str: cstring, port: u16) -> Net_Address {
 // Initializes the packet with type DATA
 Net_Packet_Content_From_Player :: proc(packet_content: ^Net_Packet_Content, player: ^Player) {
     packet_content.data.id = player.id
-    packet_content.data.x = player.x
-    packet_content.data.y = player.y
+    packet_content.data.pos = player.pos
     packet_content.data.angle = player.angle
-    packet_content.data.vel_x = player.vel_x
-    packet_content.data.vel_y = player.vel_y
+    packet_content.data.vel = player.vel
     packet_content.data.ang_vel = player.ang_vel
 }
 

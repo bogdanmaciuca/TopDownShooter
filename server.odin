@@ -152,24 +152,21 @@ Run_As_Server :: proc(max_client_num: i32) {
                 client_last_recv_time[id] = App_Get_Milli()
 
                 // Set client data
-                clients[id].x = recv_packet.content.data.x
-                clients[id].y = recv_packet.content.data.y
+                clients[id].pos = recv_packet.content.data.pos
                 clients[id].angle = recv_packet.content.data.angle
-                clients[id].vel_x = recv_packet.content.data.vel_x
-                clients[id].vel_y = recv_packet.content.data.vel_y
+                clients[id].vel = recv_packet.content.data.vel
                 clients[id].ang_vel = recv_packet.content.data.ang_vel
 
                 // Calculate AABB
                 Player_Calculate_AABB(&clients[id])
             case .Bullet:
                 id := recv_packet.content.bullet.id
-                ray_start : [2]f32 = { clients[id].x, clients[id].y }
                 ray_end : [2]f32 = {
                     cast(f32)recv_packet.content.bullet.target.x,
                     cast(f32)recv_packet.content.bullet.target.y
                 }
                 for i in 0..<len(clients) {
-                    if cast(i32)i != id && Check_Ray_AABB(ray_start, ray_end, clients[i].aabb) {
+                    if cast(i32)i != id && Check_Ray_AABB(clients[id].pos, ray_end, clients[i].aabb) {
                         fmt.printfln("{} was hit!", cast(cstring)(&clients[i].name[0]))
                     }
                 }
