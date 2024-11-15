@@ -91,7 +91,7 @@ App_Init :: proc(app: ^App, name: cstring, width: i32, height: i32) {
     assert(app.text_renderer.font != nil, sdl.GetErrorString())
 
     // Initialize char map
-    runes :: " ?!@#$%^&*();:',.@_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    runes :: " /?!@#$%^&*();:',.@_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
     for r in runes {
         app.text_renderer.chars[r] = Text_Renderer_Make_Char(app, r)
     }

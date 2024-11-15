@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:strconv"
 import "core:os"
 import "core:math"
 import "core:encoding/json"
@@ -11,10 +12,16 @@ PLAYER_IMG_H :: 50  // proportions
 PLAYER_MAX_VEL :: 0.5
 PLAYER_AABB_SHRINKING_FACTOR :: 0.1
 
+PLAYER_MAX_HEALTH :: 100
+PLAYER_MAX_AMMO :: 20
+PLAYER_DMG :: 20
+
 Player :: struct {
     image: App_Image,
     aabb: sdl.Rect,
-    id: i32,
+    id: i8,
+    health: i8,
+    ammo: i8,
     name: [28]u8,
     pos: [2]f32,
     vel: [2]f32,
@@ -42,6 +49,11 @@ Player_Draw :: proc(app: ^App, player: ^Player, predict: bool) {
         predict_angle = player.ang_vel * SEND_INTERVAL
     }
     App_Draw_Image(app, player.image, player.pos + prediction, player.angle + predict_angle)
+}
+
+Player_Draw_GUI :: proc(app: ^App, player: ^Player) {
+    str := fmt.aprintf("HEALTH: %d\nAMMO: %d/%d", player.health, player.ammo, PLAYER_MAX_AMMO)
+    App_Draw_Text(app, str, WND_W - 200, WND_H - 50)
 }
 
 // angle must be in radians!!!
@@ -121,7 +133,7 @@ Resolve_AABB_Collision :: proc(player: ^Player, rect: sdl.Rect) -> [2]f32 {
     }
 }
 
-Player_Resolve_Collisions :: proc(players: ^[]Player, client_id: i32, map_mesh: Map_Mesh) {
+Player_Resolve_Collisions :: proc(players: ^[]Player, client_id: i8, map_mesh: Map_Mesh) {
     for i in 0..<len(players^) do Player_Calculate_AABB(&players^[i])
     // Check for overlapping with the map
     for i in 0..<len(map_mesh) {
@@ -130,14 +142,14 @@ Player_Resolve_Collisions :: proc(players: ^[]Player, client_id: i32, map_mesh: 
     }
     // Check for overlapping with other players
     for i in 0..<len(players^) {
-        if cast(i32)i != client_id {
+        if cast(i8)i != client_id {
             correction := Resolve_AABB_Collision(&players^[client_id], players^[i].aabb)
             players^[client_id].pos += correction
         }
     }
 }
 
-Player_Update_Movement :: proc(app: ^App, players: ^[]Player, client_id: i32, map_mesh: Map_Mesh, delta_time: f32) {
+Player_Update_Movement :: proc(app: ^App, players: ^[]Player, client_id: i8, map_mesh: Map_Mesh, delta_time: f32) {
     keyboard := sdl.GetKeyboardState(nil)
 
     players[client_id].vel = { 0, 0 }

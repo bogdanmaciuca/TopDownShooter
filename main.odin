@@ -1,19 +1,14 @@
 /*
 TODO:
-- refactor functions to use [2] arrays instead of _x, _y
-- add shooting (raycasting): use AABB to check intersection
-  - send message to a player if they have been hit
-- add health bar (also send it every frame to the server)
 - add GUI:
-  - text with who killed who
-  - ammo
-  - text box for username
-  - lobby
+  - chat
+  - text box for username and IP
 - camera that is between cursor and player
 - cursor as sprite
 - fire sprite at the tip of the gun (hard code the position)
 - screen shake when shooting
 - field of view (simple geometry/sprite?)
+- respawn player when health reaches 0 and send death to server
 
 - find a way to make the interpolation smoother; until then, use
 SEND_INTERVAL as an approximation
@@ -38,7 +33,7 @@ main :: proc() {
                 fmt.println("Error: Second argument must be a number")
             }
             else {
-                Run_As_Server(i32(max_client_num))
+                Run_As_Server(i8(max_client_num))
             }
         }
         else {

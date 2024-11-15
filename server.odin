@@ -10,9 +10,9 @@ DELAY_PER_FRAME :: 1 // <||
 TIMEOUT :: 2000      // <||
 
 // Returns the position of the first empty slot or -1 if there isn't one
-Find_Empty_Slot :: proc(slot_array: []bool) -> i32 {
+Find_Empty_Slot :: proc(slot_array: []bool) -> i8 {
     for i in 0..<len(slot_array) {
-        if slot_array[i] == false do return cast(i32)i
+        if slot_array[i] == false do return cast(i8)i
     }
     return -1
 }
@@ -42,30 +42,6 @@ Check_Ray_Segment :: proc(a1: [2]f32, a2: [2]f32, b1:[2]f32, b2: [2]f32) -> bool
     return true
 }
 
-//Check_Ray_Segment :: proc(a1: [2]f32, a2: [2]f32, b1: [2]f32, b2: [2]f32) -> bool {
-//    // Calculate the ray and AABB boundary vectors
-//    b := a2 - a1
-//    d := b2 - b1
-//    b_dot_d_perp := b.x * d.y - b.y * d.x
-//
-//    // If b dot d == 0, the ray and boundary are parallel (no intersection)
-//    if b_dot_d_perp == 0 do return false
-//
-//    // Calculate vector from the ray start to the AABB boundary
-//    c := b1 - a1
-//
-//    // Calculate t to determine where the intersection happens along the ray
-//    t := (c.x * d.y - c.y * d.x) / b_dot_d_perp
-//    if t < 0 do return false  // Only consider intersections in the ray's direction
-//
-//    // Calculate u to determine where the intersection happens on the AABB boundary
-//    u := (c.x * b.y - c.y * b.x) / b_dot_d_perp
-//    if u < 0 || u > 1 do return false  // u should be within [0, 1] for valid intersection on the AABB boundary
-//
-//    // Intersection occurs
-//    return true
-//}
-
 Check_Ray_AABB :: proc(p0: [2]f32, p1: [2]f32, aabb: sdl.Rect) -> bool {
     // Top
     if Check_Ray_Segment(p0, p1, { cast(f32)aabb.x, cast(f32)aabb.y }, { cast(f32)aabb.x + cast(f32)aabb.w, cast(f32)aabb.y }) do return true
@@ -79,7 +55,7 @@ Check_Ray_AABB :: proc(p0: [2]f32, p1: [2]f32, aabb: sdl.Rect) -> bool {
     return false
 }
 
-Run_As_Server :: proc(max_client_num: i32) {
+Run_As_Server :: proc(max_client_num: i8) {
     //assert(Check_Ray_AABB({75, 25}, {-25, 25}, {0, 0, 50, 50}))
 
     Net_Init()
@@ -156,6 +132,7 @@ Run_As_Server :: proc(max_client_num: i32) {
                 clients[id].angle = recv_packet.content.data.angle
                 clients[id].vel = recv_packet.content.data.vel
                 clients[id].ang_vel = recv_packet.content.data.ang_vel
+                clients[id].health = recv_packet.content.data.health
 
                 // Calculate AABB
                 Player_Calculate_AABB(&clients[id])
@@ -166,8 +143,11 @@ Run_As_Server :: proc(max_client_num: i32) {
                     cast(f32)recv_packet.content.bullet.target.y
                 }
                 for i in 0..<len(clients) {
-                    if cast(i32)i != id && Check_Ray_AABB(clients[id].pos, ray_end, clients[i].aabb) {
+                    if cast(i8)i != id && Check_Ray_AABB(clients[id].pos, ray_end, clients[i].aabb) {
                         fmt.printfln("{} was hit!", cast(cstring)(&clients[i].name[0]))
+                        packet_content : Net_Packet_Content
+                        packet_content.hit.damage = PLAYER_DMG
+                        Net_Send(socket, client_addresses[cast(i8)i], .Hit, &packet_content)
                     }
                 }
             }

@@ -1,9 +1,9 @@
 /*
 FORMAT:
-- packet type    -> 4 bytes
-- packet content -> 28 bytes
+- packet type    -> 1 byte
+- packet content -> 28 bytes (max)
 ----------------------------
-- sum            -> 32 bytes
+- sum            -> 29 bytes
 
 Packet types:
 - connect    -> 0 (client --> server)
@@ -16,13 +16,13 @@ Packet types:
 - name -> 28 bytes
 
 [disconnect]:
-- id -> 2 bytes
+- id -> 1 byte
 
 [accept]:
-- id         -> 2 bytes
-- lobby_size -> 2 bytes
+- id         -> 1 byte
+- lobby_size -> 1 byte
 -----------------------
-- sum        -> 4 bytes
+- sum        -> 2 bytes
 * id starts from 0 and is used to index into the client array on the server;
 negative numbers are errors:
   - -1 -> No more room
@@ -30,13 +30,14 @@ negative numbers are errors:
 TODO: make id 2 bytes and add state that is also 2 bytes (or just add another 4 bytes for state)
       (based on state, maybe get some animation going)
 [data]:
-- id      -> 4 bytes
+- id      -> 2 bytes
 - x       -> 4 bytes
 - y       -> 4 bytes
 - angle   -> 4 bytes
 - vel_x   -> 4 bytes
 - vel_y   -> 4 bytes
 - ang_vel -> 4 bytes
+- health  -> 2 bytes
 ---------------------
 - sum     -> 28 bytes
 
@@ -45,6 +46,9 @@ TODO: make id 2 bytes and add state that is also 2 bytes (or just add another 4 
 - endpoint   -> 8 bytes (i32, i32) maybe?
 -----------------------
 - sum        -> 12 bytes
+
+[hit]:
+- damage -> 1 byte
 */
 
 package main
@@ -65,41 +69,49 @@ Net_UDP_Socket :: sdl_net.UDPsocket
 Net_Address :: sdl_net.IPaddress
 Net_UDP_Packet :: sdl_net.UDPpacket
 
-Net_Packet_Type :: enum i32 {
+Net_Packet_Type :: enum i8 {
     Connect,
     Accept,
     Disconnect,
     Data,
-    Bullet
+    Bullet,
+    Hit,
+    Chat
 }
 
 Net_Packet_Content_Connect :: struct {
     name: [28]u8
 }
 Net_Packet_Content_Accept :: struct {
-    id: i32,
-    lobby_size: i32
+    id: i8,
+    lobby_size: i8
 }
 Net_Packet_Content_Disconnect :: struct {
-    id: i32
+    id: i8
 }
 Net_Packet_Content_Data :: struct {
-    id: i32,
-    pos: [2]f32,
+    id: i8,
+    state: i8, // TODO
+    health: i8,
     angle: f32,
-    vel: [2]f32,
-    ang_vel: f32
+    ang_vel: f32,
+    pos: [2]f32,
+    vel: [2]f32
 }
 Net_Packet_Content_Bullet :: struct {
-    id: i32,
+    id: i8,
     target: [2]i32
 }
+Net_Packet_Content_Hit :: struct {
+    damage: i8
+}
 Net_Packet_Content :: struct #raw_union {
-    connect: Net_Packet_Content_Connect,
-    accept: Net_Packet_Content_Accept,
-    disconnect: Net_Packet_Content_Disconnect,
-    data: Net_Packet_Content_Data,
-    bullet: Net_Packet_Content_Bullet
+    connect:     Net_Packet_Content_Connect,
+    accept:      Net_Packet_Content_Accept,
+    disconnect:  Net_Packet_Content_Disconnect,
+    data:        Net_Packet_Content_Data,
+    bullet:      Net_Packet_Content_Bullet,
+    hit:         Net_Packet_Content_Hit
 }
 Net_Packet :: struct {
     type: Net_Packet_Type,
@@ -198,7 +210,7 @@ PROTOCOL:
 and the lobby size
 */
 // Returns the ID the client must use when sending packets to the server
-Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> (i32, i32) {
+Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> (i8, i8) {
     // Send request with name
     packet_content : Net_Packet_Content
     mem.copy(&packet_content.connect.name, rawptr(name), 28)

@@ -26,6 +26,9 @@ Run_As_Client :: proc(username: cstring) {
     players := make([]Player, lobby_size)
     for i in 0..<lobby_size do Player_Init(&app, &players[i], SPRITE_LOOKUP[i])
 
+    players[player_id].health = PLAYER_MAX_HEALTH
+    players[player_id].ammo = PLAYER_MAX_AMMO
+
     map_mesh : Map_Mesh
     Map_Load(&map_mesh, "res/map_mesh.json")
     defer delete(map_mesh)
@@ -67,11 +70,18 @@ Run_As_Client :: proc(username: cstring) {
         recv_result := Net_Recv(socket, &recv_packet, nil)
         for recv_result != 0 {
             assert(recv_result != -1)
-            if recv_packet.type == .Data && recv_packet.content.data.id != player_id {
-                players[recv_packet.content.data.id].pos = recv_packet.content.data.pos
-                players[recv_packet.content.data.id].vel = recv_packet.content.data.vel
-                players[recv_packet.content.data.id].angle = recv_packet.content.data.angle
-                players[recv_packet.content.data.id].ang_vel = recv_packet.content.data.ang_vel
+            #partial switch recv_packet.type {
+            case .Data:
+                if recv_packet.type == .Data && recv_packet.content.data.id != player_id {
+                    players[recv_packet.content.data.id].pos = recv_packet.content.data.pos
+                    players[recv_packet.content.data.id].vel = recv_packet.content.data.vel
+                    players[recv_packet.content.data.id].angle = recv_packet.content.data.angle
+                    players[recv_packet.content.data.id].ang_vel = recv_packet.content.data.ang_vel
+                    players[recv_packet.content.data.id].health = recv_packet.content.data.health
+                }
+            case .Hit:
+                players[player_id].health -= recv_packet.content.hit.damage
+                fmt.println("SHIT I GOT TAGGEDDD")
             }
             recv_result = Net_Recv(socket, &recv_packet, nil)
         }
@@ -93,14 +103,16 @@ Run_As_Client :: proc(username: cstring) {
         // Rendering
         App_Draw_Image_i(&app, game_map, {0, 0}, 0)
         App_Set_Color(&app, {25, 150, 25})
-        for i in 0..<len(map_mesh) {
-            App_Draw_Rect(&app, map_mesh[i])
-        }
+        //for i in 0..<len(map_mesh) {
+        //    App_Draw_Rect(&app, map_mesh[i])
+        //}
         App_Set_Color(&app, {25, 25, 150})
         for i in 0..<lobby_size {
-            Player_Draw(&app, &players[i], cast(i32)i != player_id)
-            App_Draw_Rect(&app, players[i].aabb)
+            Player_Draw(&app, &players[i], cast(i8)i != player_id)
+            //App_Draw_Rect(&app, players[i].aabb)
         }
+        App_Set_Color(&app, {200, 200, 200})
+        Player_Draw_GUI(&app, &players[player_id])
         App_Set_Color(&app, {0, 0, 0})
         App_Present(&app)
 
