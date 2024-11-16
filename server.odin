@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:mem"
+import "core:strings"
 import sdl "vendor:sdl2"
 
 PORT :: 4000
@@ -56,8 +57,6 @@ Check_Ray_AABB :: proc(p0: [2]f32, p1: [2]f32, aabb: sdl.Rect) -> bool {
 }
 
 Run_As_Server :: proc(max_client_num: i8) {
-    //assert(Check_Ray_AABB({75, 25}, {-25, 25}, {0, 0, 50, 50}))
-
     Net_Init()
     defer Net_Destroy()
 
@@ -69,6 +68,7 @@ Run_As_Server :: proc(max_client_num: i8) {
     client_addresses := make([]Net_Address, max_client_num)
     packet_content_arr := make([]Net_Packet_Content, max_client_num)
     client_last_recv_time := make([]f32, max_client_num)
+
 
     game_started := false
 
@@ -144,10 +144,16 @@ Run_As_Server :: proc(max_client_num: i8) {
                 }
                 for i in 0..<len(clients) {
                     if cast(i8)i != id && Check_Ray_AABB(clients[id].pos, ray_end, clients[i].aabb) {
-                        fmt.printfln("{} was hit!", cast(cstring)(&clients[i].name[0]))
                         packet_content : Net_Packet_Content
                         packet_content.hit.damage = PLAYER_DMG
                         Net_Send(socket, client_addresses[cast(i8)i], .Hit, &packet_content)
+
+                        message : string
+                        message = strings.concatenate({string(cstring(&clients[id].name[0])), " killed ", string(cstring(&clients[i].name[0]))})
+                        raw_string := transmute(mem.Raw_String)message
+
+                        mem.copy(&packet_content.chat.message, raw_string.data, 48)
+                        for addr in client_addresses do Net_Send(socket, addr, .Chat, &packet_content)
                     }
                 }
             }

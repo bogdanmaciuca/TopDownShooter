@@ -2,9 +2,14 @@ package main
 
 import "core:fmt"
 import sdl "vendor:sdl2"
+import "core:container/queue"
+import "core:strings"
+import "core:mem"
 
 WND_W :: 1024
 WND_H :: 768
+
+CHAT_MAX_LINES :: 5
 
 Run_As_Client :: proc(username: cstring) {
     app : App
@@ -21,21 +26,22 @@ Run_As_Client :: proc(username: cstring) {
 
     player_id, lobby_size := Net_Connect(socket, server_address, username)
 
-    game_map := App_Load_Image(&app, "res/map.jpg", 0, 0)
     SPRITE_LOOKUP := [4]cstring{ "res/red.png", "res/blue.png", "res/yellow.png", "res/green.png" }
     players := make([]Player, lobby_size)
     for i in 0..<lobby_size do Player_Init(&app, &players[i], SPRITE_LOOKUP[i])
 
-    players[player_id].health = PLAYER_MAX_HEALTH
-    players[player_id].ammo = PLAYER_MAX_AMMO
-
+    game_map := App_Load_Image(&app, "res/map.jpg", 0, 0)
     map_mesh : Map_Mesh
     Map_Load(&map_mesh, "res/map_mesh.json")
     defer delete(map_mesh)
 
     players[player_id].id = player_id // The client
-
     Player_Init(&app, &players[player_id], SPRITE_LOOKUP[player_id])
+    players[player_id].health = PLAYER_MAX_HEALTH
+    players[player_id].ammo = PLAYER_MAX_AMMO
+
+    chat : queue.Queue(string)
+    queue.init(&chat, 0)
 
     event : sdl.Event
     delta_time : f32 = 0
@@ -81,7 +87,9 @@ Run_As_Client :: proc(username: cstring) {
                 }
             case .Hit:
                 players[player_id].health -= recv_packet.content.hit.damage
-                fmt.println("SHIT I GOT TAGGEDDD")
+            case .Chat:
+                queue.push(&chat, strings.clone(string(cstring(&recv_packet.content.chat.message[0]))))
+                if queue.len(chat) > CHAT_MAX_LINES do queue.pop_front(&chat)
             }
             recv_result = Net_Recv(socket, &recv_packet, nil)
         }
@@ -113,6 +121,11 @@ Run_As_Client :: proc(username: cstring) {
         }
         App_Set_Color(&app, {200, 200, 200})
         Player_Draw_GUI(&app, &players[player_id])
+        str : string
+        for i in 0..<queue.len(chat) {
+            str, _ = strings.concatenate({str, queue.get(&chat, i), "\n"})
+        }
+        App_Draw_Text(&app, str, 10, 10)
         App_Set_Color(&app, {0, 0, 0})
         App_Present(&app)
 

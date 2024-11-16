@@ -1,9 +1,7 @@
 /*
 FORMAT:
-- packet type    -> 1 byte
-- packet content -> 28 bytes (max)
-----------------------------
-- sum            -> 29 bytes
+- packet type
+- packet content
 
 Packet types:
 - connect    -> 0 (client --> server)
@@ -60,10 +58,12 @@ import sdl "vendor:sdl2"
 import sdl_net "vendor:sdl2/net"
 
 NET_RECV_RETRY_TIME :: 20 // Milliseconds
-NET_PACKET_CAPACITY :: 32
+NET_PACKET_CAPACITY :: 48
 NET_PACKET_SIZE :: 28
 NET_CONN_TIMEOUT :: 2000  // Milliseconds
 SEND_INTERVAL :: 20       // Milliseconds
+
+MAX_CHAT_MSG_LEN :: 48
 
 Net_UDP_Socket :: sdl_net.UDPsocket
 Net_Address :: sdl_net.IPaddress
@@ -105,13 +105,17 @@ Net_Packet_Content_Bullet :: struct {
 Net_Packet_Content_Hit :: struct {
     damage: i8
 }
+Net_Packet_Content_Chat :: struct {
+    message: [48]u8
+}
 Net_Packet_Content :: struct #raw_union {
     connect:     Net_Packet_Content_Connect,
     accept:      Net_Packet_Content_Accept,
     disconnect:  Net_Packet_Content_Disconnect,
     data:        Net_Packet_Content_Data,
     bullet:      Net_Packet_Content_Bullet,
-    hit:         Net_Packet_Content_Hit
+    hit:         Net_Packet_Content_Hit,
+    chat:        Net_Packet_Content_Chat
 }
 Net_Packet :: struct {
     type: Net_Packet_Type,
@@ -213,7 +217,7 @@ and the lobby size
 Net_Connect :: proc(socket: Net_Socket, address: Net_Address, name: cstring) -> (i8, i8) {
     // Send request with name
     packet_content : Net_Packet_Content
-    mem.copy(&packet_content.connect.name, rawptr(name), 28)
+    mem.copy(&packet_content.connect.name, rawptr(name), len(name))
     send_result := Net_Send(socket, address, Net_Packet_Type.Connect, &packet_content)
     assert(send_result == 1)
 
