@@ -156,7 +156,8 @@ Net_Socket_Destroy :: proc(socket: Net_Socket) {
 
 Net_Address_From_String :: proc(str: cstring, port: u16) -> Net_Address {
     address : Net_Address
-    sdl_net.ResolveHost(&address, str, port)
+    error := sdl_net.ResolveHost(&address, str, port)
+    assert(error == 0)
     return address
 }
 

@@ -1,7 +1,6 @@
 /*
 TODO:
 - add GUI:
-  - chat
   - text box for username and IP
 - camera that is between cursor and player
 - cursor as sprite
@@ -10,6 +9,8 @@ TODO:
 - field of view (simple geometry/sprite?)
 - respawn player when health reaches 0 and send death to server
 
+- chat: print who joins and disconnects
+- reliable udp
 - find a way to make the interpolation smoother; until then, use
 SEND_INTERVAL as an approximation
 - don t set len to max_capacity in net_send() if that s not necessary
@@ -43,12 +44,11 @@ main :: proc() {
     else if len(os.args) > 3 {
         fmt.println("Error: too many arguments")
     }
-    else if len(os.args) == 2 {
-        username := strings.unsafe_string_to_cstring(os.args[1])
-        Run_As_Client(username)
+    else if len(os.args) == 1 {
+        Run_As_Client()
     }
     else {
-        fmt.println("Error: too few arguments")
+        fmt.println("Error: wrong number of arguments")
     }
 }
 

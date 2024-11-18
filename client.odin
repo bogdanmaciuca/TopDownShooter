@@ -5,16 +5,58 @@ import sdl "vendor:sdl2"
 import "core:container/queue"
 import "core:strings"
 import "core:mem"
+import "core:os"
 
 WND_W :: 1024
 WND_H :: 768
 
 CHAT_MAX_LINES :: 5
 
-Run_As_Client :: proc(username: cstring) {
+Startup_Screen :: proc(app: ^App) -> (cstring, cstring) {
+    prompt : strings.Builder
+    prompt = strings.builder_make()
+    strings.write_bytes(&prompt, []byte{'U', 's', 'e', 'r', 'n', 'a', 'm', 'e', '/', 'S', 'e', 'r', 'v', 'e', 'r', ' ', 'I', 'P', ':', ' '}) // Is there no better way???
+
+    event : sdl.Event
+    input_loop : for {
+        // Event handling
+        if sdl.PollEvent(&event) {
+            #partial switch event.type {
+            case sdl.EventType.QUIT:
+                App_Destroy(app)
+                os.exit(0)
+            case sdl.EventType.KEYDOWN:
+                ascii_val := cast(i32)event.key.keysym.sym
+                if event.key.keysym.mod == sdl.KMOD_LSHIFT || event.key.keysym.mod == sdl.KMOD_RSHIFT do ascii_val -= 32
+                if ascii_val >= 'A' && ascii_val <= 'Z' || ascii_val >= 'a' && ascii_val <= 'z' \
+                    || ascii_val == ' ' || ascii_val == '/' || ascii_val >= '0' && ascii_val <= '9' || ascii_val == '.'
+                {
+                    strings.write_byte(&prompt, cast(u8)ascii_val)
+                }
+                else if event.key.keysym.scancode == sdl.SCANCODE_BACKSPACE && strings.builder_len(prompt) > 20 {
+                    strings.pop_byte(&prompt)
+                }
+                else if event.key.keysym.scancode == sdl.SCANCODE_RETURN {
+                    break input_loop
+                }
+            }
+        }
+        App_Draw_Text(app, strings.to_string(prompt), 10, 10)
+        App_Present(app)
+    }
+
+    str := strings.to_string(prompt)[20:] // TODO: must free this i think?
+    fields := strings.split(str, "/")
+
+    return strings.clone_to_cstring(fields[0]), strings.clone_to_cstring(fields[1]) // TODO: must also free this i think?
+}
+
+Run_As_Client :: proc() {
     app : App
     App_Init(&app, "Top Down Shooter", WND_W, WND_H)
     defer App_Destroy(&app)
+
+    username, ip_str := Startup_Screen(&app)
 
     Net_Init()
     defer Net_Destroy()
@@ -22,7 +64,9 @@ Run_As_Client :: proc(username: cstring) {
     socket := Net_Socket_Create(0)
     defer Net_Socket_Destroy(socket)
 
-    server_address := Net_Address_From_String("192.168.221.105", PORT)
+    // TODO: If address is wrong go to the prompt again
+    server_address := Net_Address_From_String(ip_str, PORT)
+    fmt.println(server_address)
 
     player_id, lobby_size := Net_Connect(socket, server_address, username)
 
@@ -119,7 +163,7 @@ Run_As_Client :: proc(username: cstring) {
             Player_Draw(&app, &players[i], cast(i8)i != player_id)
             //App_Draw_Rect(&app, players[i].aabb)
         }
-        App_Set_Color(&app, {200, 200, 200})
+        //App_Set_Color(&app, {200, 200, 200})
         Player_Draw_GUI(&app, &players[player_id])
         str : string
         for i in 0..<queue.len(chat) {

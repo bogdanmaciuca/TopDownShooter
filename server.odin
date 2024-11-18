@@ -10,6 +10,8 @@ NET_MAX_CLIENTS :: 4
 DELAY_PER_FRAME :: 1 // <||
 TIMEOUT :: 2000      // <||
 
+MAX_NAME_LEN_IN_CHAT :: 15
+
 // Returns the position of the first empty slot or -1 if there isn't one
 Find_Empty_Slot :: proc(slot_array: []bool) -> i8 {
     for i in 0..<len(slot_array) {
@@ -148,11 +150,17 @@ Run_As_Server :: proc(max_client_num: i8) {
                         packet_content.hit.damage = PLAYER_DMG
                         Net_Send(socket, client_addresses[cast(i8)i], .Hit, &packet_content)
 
+                        // Update chat for everybody
                         message : string
-                        message = strings.concatenate({string(cstring(&clients[id].name[0])), " killed ", string(cstring(&clients[i].name[0]))})
+                        sender_name := string(cstring(&clients[id].name[0]))
+                        // Truncate the names if they are too long
+                        if len(sender_name) > MAX_NAME_LEN_IN_CHAT do sender_name = strings.concatenate({sender_name[:MAX_NAME_LEN_IN_CHAT], "..."})
+                        receiver_name := string(cstring(&clients[i].name[0]))
+                        if len(receiver_name) > MAX_NAME_LEN_IN_CHAT do receiver_name = strings.concatenate({receiver_name[:MAX_NAME_LEN_IN_CHAT], "..."})
+                        message = strings.concatenate({sender_name, " killed ", receiver_name})
                         raw_string := transmute(mem.Raw_String)message
-
                         mem.copy(&packet_content.chat.message, raw_string.data, 48)
+
                         for addr in client_addresses do Net_Send(socket, addr, .Chat, &packet_content)
                     }
                 }
