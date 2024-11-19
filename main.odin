@@ -1,11 +1,6 @@
 /*
 TODO:
-- add GUI:
-  - text box for username and IP
-- camera that is between cursor and player
-- cursor as sprite
 - fire sprite at the tip of the gun (hard code the position)
-- screen shake when shooting
 - field of view (simple geometry/sprite?)
 - respawn player when health reaches 0 and send death to server
 

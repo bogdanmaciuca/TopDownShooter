@@ -173,8 +173,8 @@ App_Get_Cursor_Pos :: proc(x: ^i32, y: ^i32) {
     sdl.GetMouseState(x, y)
 }
 
-App_Get_Milli :: proc() -> f32 {
-	return f32(f64(sdl.GetPerformanceCounter()) * 1000 / f64(sdl.GetPerformanceFrequency()))
+App_Get_Milli :: proc() -> f64 {
+	return f64(sdl.GetPerformanceCounter()) * 1000 / f64(sdl.GetPerformanceFrequency())
 }
 
 App_Set_Color :: proc(app: ^App, color: [3]u8) {
@@ -187,4 +187,10 @@ App_Draw_Rect :: proc(app: ^App, rect: sdl.Rect) {
         w = rect.w, h = rect.h
     }
     sdl.RenderDrawRect(app.renderer, &world_rect);
+}
+
+App_Load_Cursor :: proc(image_filename: cstring) {
+    surface := sdl_img.Load(image_filename)
+    cursor := sdl.CreateColorCursor(surface, 0, 0)
+    sdl.SetCursor(cursor);
 }

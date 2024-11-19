@@ -69,12 +69,12 @@ Run_As_Server :: proc(max_client_num: i8) {
     client_slots := make([]bool, max_client_num) // 0 for empty, 1 for occupied
     client_addresses := make([]Net_Address, max_client_num)
     packet_content_arr := make([]Net_Packet_Content, max_client_num)
-    client_last_recv_time := make([]f32, max_client_num)
+    client_last_recv_time := make([]f64, max_client_num)
 
 
     game_started := false
 
-    last_send_time : f32 = App_Get_Milli()
+    last_send_time := App_Get_Milli()
 
     fmt.printfln("Listening on port {}.", PORT)
     event : sdl.Event

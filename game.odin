@@ -15,6 +15,7 @@ PLAYER_AABB_SHRINKING_FACTOR :: 0.1
 PLAYER_MAX_HEALTH :: 100
 PLAYER_MAX_AMMO :: 20
 PLAYER_DMG :: 20
+PLAYER_TIME_BETWEEN_SHOTS :: 250 // Milliseconds
 
 Player :: struct {
     image: App_Image,

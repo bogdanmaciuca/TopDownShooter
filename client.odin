@@ -6,11 +6,16 @@ import "core:container/queue"
 import "core:strings"
 import "core:mem"
 import "core:os"
+import "core:math/rand"
+import "core:math/noise"
 
 WND_W :: 1024
 WND_H :: 768
 
 CHAT_MAX_LINES :: 5
+SCREEN_SHAKE_POWER :: 5
+SCREEN_SHAKE_DIMINISHING_FACTOR :: 0.004
+NOISE_SEED :: 69420
 
 Startup_Screen :: proc(app: ^App) -> (cstring, cstring) {
     prompt : strings.Builder
@@ -56,6 +61,8 @@ Run_As_Client :: proc() {
     App_Init(&app, "Top Down Shooter", WND_W, WND_H)
     defer App_Destroy(&app)
 
+    App_Load_Cursor("res/cursor.png")
+
     username, ip_str := Startup_Screen(&app)
 
     Net_Init()
@@ -84,6 +91,9 @@ Run_As_Client :: proc() {
     players[player_id].health = PLAYER_MAX_HEALTH
     players[player_id].ammo = PLAYER_MAX_AMMO
 
+    screen_shake_factor : f32
+    time_since_last_shot : f32
+
     chat : queue.Queue(string)
     queue.init(&chat, 0)
 
@@ -100,17 +110,23 @@ Run_As_Client :: proc() {
                 break game_loop
             case sdl.EventType.MOUSEBUTTONDOWN:
                 if event.button.button == sdl.BUTTON_LEFT {
-                    // TODO: Add minimum time between shots
-                    cursor_x, cursor_y : i32
-                    App_Get_Cursor_Pos(&cursor_x, &cursor_y)
-                    target : [2]i32 = {
-                        cursor_x + cast(i32)app.camera.x - app.window_width / 2,
-                        cursor_y + cast(i32)app.camera.y - app.window_height / 2
+                    if time_since_last_shot > PLAYER_TIME_BETWEEN_SHOTS {
+                        // TODO: Add minimum time between shots
+                        cursor_x, cursor_y : i32
+                        App_Get_Cursor_Pos(&cursor_x, &cursor_y)
+                        target : [2]i32 = {
+                            cursor_x + cast(i32)app.camera.x - app.window_width / 2,
+                            cursor_y + cast(i32)app.camera.y - app.window_height / 2
+                        }
+                        packet_content : Net_Packet_Content
+                        packet_content.bullet.id = player_id
+                        packet_content.bullet.target = target
+                        Net_Send(socket, server_address, .Bullet, &packet_content)
+                        time_since_last_shot = 0
+
+                        // Add screenshake
+                        screen_shake_factor = rand.float32_range(0.6, 1.2) * SCREEN_SHAKE_POWER
                     }
-                    packet_content : Net_Packet_Content
-                    packet_content.bullet.id = player_id
-                    packet_content.bullet.target = target
-                    Net_Send(socket, server_address, .Bullet, &packet_content)
                 }
             }
         }
@@ -149,8 +165,18 @@ Run_As_Client :: proc() {
         }
 
         // Game logic
+        time_since_last_shot += delta_time
         Player_Update_Movement(&app, &players, player_id, map_mesh, delta_time)
-        app.camera = players[player_id].pos
+        cursor_pos : [2]i32
+        App_Get_Cursor_Pos(&cursor_pos.x, &cursor_pos.y)
+        app.camera = 0.5 * {cast(f32)(cursor_pos.x - app.window_width/2), cast(f32)(cursor_pos.y - app.window_height/2)} + players[player_id].pos
+
+        // Screen shake
+        noise_coord := frame_start / 100
+        app.camera.x += noise.noise_2d(NOISE_SEED, {noise_coord, -noise_coord}) * screen_shake_factor
+        app.camera.y += noise.noise_2d(NOISE_SEED, {-noise_coord, noise_coord}) * screen_shake_factor
+        screen_shake_factor -= SCREEN_SHAKE_POWER * SCREEN_SHAKE_DIMINISHING_FACTOR * delta_time
+        if screen_shake_factor < 0 do screen_shake_factor = 0
 
         // Rendering
         App_Draw_Image_i(&app, game_map, {0, 0}, 0)
@@ -174,7 +200,7 @@ Run_As_Client :: proc() {
         App_Present(&app)
 
         frame_end := App_Get_Milli()
-        delta_time = frame_end - frame_start
+        delta_time = cast(f32)(frame_end - frame_start)
     }
 
     packet_content : Net_Packet_Content
