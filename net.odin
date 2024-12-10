@@ -8,7 +8,8 @@ Packet types:
 - accept     -> 1 (client <-- server)
 - disconnect -> 2 (client --> server)
 - data       -> 3 (client <-> server)
-- bullet     -> 4 (client --> server)
+- hit        -> 4 (client --> server)
+- death      -> 5 (client --> server)
 
 [connect]:
 - name -> 28 bytes
@@ -42,11 +43,13 @@ TODO: make id 2 bytes and add state that is also 2 bytes (or just add another 4 
 [bullet]:
 - id: player -> 4 bytes / 2 bytes maybe?
 - endpoint   -> 8 bytes (i32, i32) maybe?
------------------------
+------------------------
 - sum        -> 12 bytes
 
 [hit]:
 - damage -> 1 byte
+
+[death]
 */
 
 package main
@@ -76,7 +79,8 @@ Net_Packet_Type :: enum i8 {
     Data,
     Bullet,
     Hit,
-    Chat
+    Chat,
+    Death
 }
 
 Net_Packet_Content_Connect :: struct {
@@ -91,7 +95,7 @@ Net_Packet_Content_Disconnect :: struct {
 }
 Net_Packet_Content_Data :: struct {
     id: i8,
-    state: i8, // TODO
+    state: i8,
     health: i8,
     angle: f32,
     ang_vel: f32,
@@ -164,6 +168,8 @@ Net_Address_From_String :: proc(str: cstring, port: u16) -> Net_Address {
 // Initializes the packet with type DATA
 Net_Packet_Content_From_Player :: proc(packet_content: ^Net_Packet_Content, player: ^Player) {
     packet_content.data.id = player.id
+    packet_content.data.state = cast(i8)player.state
+    packet_content.data.health = player.health
     packet_content.data.pos = player.pos
     packet_content.data.angle = player.angle
     packet_content.data.vel = player.vel
@@ -200,7 +206,10 @@ Net_Recv_Blocking :: proc(socket: Net_Socket, packet: ^Net_Packet, address: ^Net
 
 // Returns 0 on error and 1 if the package was sent
 Net_Send :: proc(socket: Net_Socket, address: Net_Address, packet_type: Net_Packet_Type, packet_content: ^Net_Packet_Content) -> i32 {
-    packet := Net_Packet{type = packet_type, content = packet_content^} // TODO: Would it be better if instead of dereferencing i would
+    packet : Net_Packet = ---
+    packet.type = packet_type
+    if packet_content == nil do packet.content = packet_content^
+
     socket.send_packet.address = address                                //       just pass be value the array?
     socket.send_packet.channel = -1
     socket.send_packet.len = NET_PACKET_CAPACITY

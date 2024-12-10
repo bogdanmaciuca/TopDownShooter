@@ -131,6 +131,8 @@ Run_As_Server :: proc(max_client_num: i8) {
 
                 // Set client data
                 clients[id].pos = recv_packet.content.data.pos
+                clients[id].state = cast(Player_State)recv_packet.content.data.state
+                clients[id].health = recv_packet.content.data.health
                 clients[id].angle = recv_packet.content.data.angle
                 clients[id].vel = recv_packet.content.data.vel
                 clients[id].ang_vel = recv_packet.content.data.ang_vel
@@ -199,18 +201,12 @@ Run_As_Server :: proc(max_client_num: i8) {
             if current_time > last_send_time + SEND_INTERVAL {
                 last_send_time = current_time
                 for i in 0..<max_client_num {
-                    //if client_slots[i] {
-                        Net_Packet_Content_From_Player(&packet_content_arr[i], &clients[i])
-                    //}
+                    Net_Packet_Content_From_Player(&packet_content_arr[i], &clients[i])
                 }
                 for i in 0..<max_client_num {
-                    //if client_slots[i] {
-                        for j in 0..<max_client_num {
-                            //if client_slots[j] {
-                                Net_Send(socket, client_addresses[i], .Data, &packet_content_arr[j])
-                            //}
-                        }
-                    //}
+                    for j in 0..<max_client_num {
+                        Net_Send(socket, client_addresses[i], .Data, &packet_content_arr[j])
+                    }
                 }
             }
         }

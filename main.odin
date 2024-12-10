@@ -1,16 +1,8 @@
 /*
 TODO:
-- fire sprite at the tip of the gun (hard code the position)
-- field of view (simple geometry/sprite?)
+- Cannot connect to server?
 - respawn player when health reaches 0 and send death to server
-
-- chat: print who joins and disconnects
-- reliable udp
-- find a way to make the interpolation smoother; until then, use
-SEND_INTERVAL as an approximation
-- don t set len to max_capacity in net_send() if that s not necessary
-- when a new player tries to connect, search for an empty slot in the
-client array and if an index is found send that as the player ID
+- add state to player
 */
 
 package main

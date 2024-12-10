@@ -164,6 +164,15 @@ Run_As_Client :: proc() {
             Net_Send(socket, server_address, .Data, &packet_content)
         }
 
+        // Checking for death
+        if players[player_id].health < 0 {
+            // Send death to server
+            Net_Send(socket, server_address, .Death, nil)
+            // Respawn player (teleport to different address)
+            players[player_id].pos = { 0, 0 }
+            players[player_id].vel = { 0, 0 }
+        }
+
         // Game logic
         time_since_last_shot += delta_time
         Player_Update_Movement(&app, &players, player_id, map_mesh, delta_time)

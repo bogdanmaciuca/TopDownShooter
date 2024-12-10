@@ -17,10 +17,17 @@ PLAYER_MAX_AMMO :: 20
 PLAYER_DMG :: 20
 PLAYER_TIME_BETWEEN_SHOTS :: 250 // Milliseconds
 
+Player_State :: enum {
+    Idle,
+    Run,
+    Shoot
+}
+
 Player :: struct {
     image: App_Image,
     aabb: sdl.Rect,
     id: i8,
+    state: Player_State,
     health: i8,
     ammo: i8,
     name: [28]u8,
